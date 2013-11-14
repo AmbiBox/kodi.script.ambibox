@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="script.ambibox" name="AmbiBox"
+       version="0.0.1" date="14.11.2013"
+       provider-name="AmbiBox">
+  <requires>
+    <import addon="xbmc.python" version="2.1.0"/>
+  </requires>
+  <extension point="xbmc.python.script" library="default.py"/>
+  <extension point="xbmc.service" library="service.py" />
+
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en">AmbiBox manager</summary>
+    <description lang="en">AmbiBox</description>
+    <platform>windx</platform>
+  </extension>
+</addon>
