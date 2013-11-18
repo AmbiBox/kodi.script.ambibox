@@ -1,21 +1,22 @@
-#Modules General
-import AmbiBox
-
 # Modules XBMC
-import xbmc, xbmcgui, xbmcaddon
+import xbmc
+import xbmcgui
+import xbmcaddon
+
+#Modules Ambibox
+import AmbiBox
 
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __language__ = __settings__.getLocalizedString
-#########################################################################################################
-## BEGIN
-#########################################################################################################
+
+
 ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 ambibox.connect()
 menu = ambibox.getProfiles()
 menu.append(__language__(32021))
 off = len(menu) - 1
-quit = False
-while not quit:
+end = False
+while not end:
     selected = xbmcgui.Dialog().select(__language__(32020), menu)
     if selected != -1:
         ambibox.lock()
@@ -24,6 +25,6 @@ while not quit:
         else:
             ambibox.turnOn()
             ambibox.setProfile(menu[selected])
-        ambibox.unlock
-    quit = True
+        ambibox.unlock()
+    end = True
 ambibox.disconnect()
