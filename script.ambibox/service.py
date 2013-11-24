@@ -25,7 +25,7 @@ from Media import *
 media = Media()
 
 
-LENGTHDATAMAP = 8294400
+LENGTHDATAMAP = 8294410
 
 
 def notification(text):
@@ -142,7 +142,7 @@ class CapturePlayer(xbmc.Player):
                         self.inDataMap[9] = (chr((length >> 8) & 0xff))
                         self.inDataMap[10] = (chr(length & 0xff))
                         # data
-                        self.inDataMap[11:] = image
+                        self.inDataMap[11:(11+length)] = str(image)
 
                         self.inDataMap[0] = (chr(240))
 
