@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <addon id="script.ambibox" name="AmbiBox"
-       version="0.0.1" date="14.11.2013"
+       version="0.0.2" date="14.11.2013"
        provider-name="AmbiBox">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>

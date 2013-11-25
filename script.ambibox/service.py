@@ -25,9 +25,6 @@ from Media import *
 media = Media()
 
 
-LENGTHDATAMAP = 8294410
-
-
 def notification(text):
     text = text.encode('utf-8')
     icon = __settings__.getAddonInfo("icon")
@@ -49,7 +46,6 @@ class CapturePlayer(xbmc.Player):
         debug("service AmbiBox connect")
         self.ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
         self.ambibox.connect()
-        self.inDataMap = mmap.mmap(0, LENGTHDATAMAP, 'AmbiBox_XBMC_SharedMem', mmap.ACCESS_WRITE)
 
     def setProfile(self, enable, profile):
         if enable == 'true':
@@ -79,6 +75,8 @@ class CapturePlayer(xbmc.Player):
             ratio = infos[2]
             notification("%d => %dx%d" % (ratio, width, height))
 
+            self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMem', mmap.ACCESS_WRITE)
+
             capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
 
             while self.isPlayingVideo():
@@ -87,43 +85,12 @@ class CapturePlayer(xbmc.Player):
                     self.inDataMap.seek(0)
                     seeked = self.inDataMap.read_byte()
                     if ord(seeked) == 248:
-                        # self.inDataMap.seek(1)
-                        # # width
-                        # self.inDataMap.write_byte(chr((width >> 8) & 0xff))
-                        # self.inDataMap.write_byte(chr(width & 0xff))
-                        # # height
-                        # self.inDataMap.write_byte(chr((height >> 8) & 0xff))
-                        # self.inDataMap.write_byte(chr(height & 0xff))
-                        # # aspect ratio
-                        # self.inDataMap.write_byte(chr(int(ratio * 100)))
-                        # # image format
-                        # fmt = capture.getImageFormat()
-                        # if fmt == 'RGBA':
-                        #     self.inDataMap.write_byte(chr(0))
-                        # elif fmt == 'BGRA':
-                        #     self.inDataMap.write_byte(chr(1))
-                        # else:
-                        #     self.inDataMap.write_byte(chr(2))
-                        # image = capture.getImage()
-                        # length = len(image)
-                        # # datasize
-                        # self.inDataMap.write_byte(chr((length >> 24) & 0xff))
-                        # self.inDataMap.write_byte(chr((length >> 16) & 0xff))
-                        # self.inDataMap.write_byte(chr((length >> 8) & 0xff))
-                        # self.inDataMap.write_byte(chr(length & 0xff))
-                        # # data
-                        # for b in image:
-                        #     self.inDataMap.write_byte(chr(b))
-                        # self.inDataMap.seek(0)
-                        # self.inDataMap.write_byte(chr(240))
-
-                        # self.inDataMap.seek(1)
                         # width
-                        self.inDataMap[1] = chr((width >> 8) & 0xff)
-                        self.inDataMap[2] = chr(width & 0xff)
+                        self.inDataMap[1] = chr(width & 0xff)
+                        self.inDataMap[2] = chr((width >> 8) & 0xff)
                         # height
-                        self.inDataMap[3] = (chr((height >> 8) & 0xff))
-                        self.inDataMap[4] = (chr(height & 0xff))
+                        self.inDataMap[3] = (chr(height & 0xff))
+                        self.inDataMap[4] = (chr((height >> 8) & 0xff))
                         # aspect ratio
                         self.inDataMap[5] = (chr(int(ratio * 100)))
                         # image format
@@ -137,25 +104,34 @@ class CapturePlayer(xbmc.Player):
                         image = capture.getImage()
                         length = len(image)
                         # datasize
-                        self.inDataMap[7] = (chr((length >> 24) & 0xff))
-                        self.inDataMap[8] = (chr((length >> 16) & 0xff))
-                        self.inDataMap[9] = (chr((length >> 8) & 0xff))
-                        self.inDataMap[10] = (chr(length & 0xff))
+                        self.inDataMap[7] = (chr(length & 0xff))
+                        self.inDataMap[8] = (chr((length >> 8) & 0xff))
+                        self.inDataMap[9] = (chr((length >> 16) & 0xff))
+                        self.inDataMap[10] = (chr((length >> 24) & 0xff))
                         # data
                         self.inDataMap[11:(11+length)] = str(image)
-
+                        # write first byte to indicate we finished writing the data
                         self.inDataMap[0] = (chr(240))
+
+            self.inDataMap.close()
+            self.inDataMap = None
 
     def onPlayBackStopped(self):
         self.ambibox.lock()
         self.setProfile(__settings__.getSetting("default_enable"), __settings__.getSetting("default_profile"))
         self.ambibox.unlock()
+        if self.inDataMap is not None:
+            self.inDataMap.close()
+            self.inDataMap = None
 
     def close(self):
         self.ambibox.lock()
         self.ambibox.turnOff()
         self.ambibox.unlock()
         self.ambibox.disconnect()
+        if self.inDataMap is not None:
+            self.inDataMap.close()
+            self.inDataMap = None
 
 
 debug("service AmbiBox")
