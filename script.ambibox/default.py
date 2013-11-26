@@ -27,9 +27,10 @@ media = Media()
 
 def notification(text):
     text = text.encode('utf-8')
-    icon = __settings__.getAddonInfo("icon")
-    smallicon = icon.encode("utf-8")
+    info(text)
     if __settings__.getSetting("notification") == 'true':
+        icon = __settings__.getAddonInfo("icon")
+        smallicon = icon.encode("utf-8")
         xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
 
 
@@ -43,21 +44,19 @@ def info(msg):
 
 class CapturePlayer(xbmc.Player):
     def __init__(self):
-        debug("service AmbiBox connect")
-        self.ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
-        self.ambibox.connect()
+        self.inDataMap = None
         self.setProfile(__settings__.getSetting("default_enable"), __settings__.getSetting("default_profile"))
 
     def setProfile(self, enable, profile):
-        self.ambibox.lock()
+        ambibox.lock()
         if enable == 'true':
-            notification(__language__(32032) % profile)
-            self.ambibox.turnOn()
-            self.ambibox.setProfile(profile)
+            notification(__language__(32033) % profile)
+            ambibox.turnOn()
+            ambibox.setProfile(profile)
         else:
-            notification(__language__(32031))
-            self.ambibox.turnOff()
-        self.ambibox.unlock()
+            notification(__language__(32032))
+            ambibox.turnOff()
+        ambibox.unlock()
 
     def onPlayBackStarted(self):
         if self.isPlayingAudio():
@@ -72,7 +71,7 @@ class CapturePlayer(xbmc.Player):
             width = infos[0]
             height = infos[1]
             ratio = infos[2]
-            notification("%d => %dx%d" % (ratio, width, height))
+            debug("%d => %dx%d" % (ratio, width, height))
 
             self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMem', mmap.ACCESS_WRITE)
 
@@ -122,23 +121,33 @@ class CapturePlayer(xbmc.Player):
             self.inDataMap = None
 
     def close(self):
-        self.ambibox.lock()
-        self.ambibox.turnOff()
-        self.ambibox.unlock()
-        self.ambibox.disconnect()
+        ambibox.lock()
+        ambibox.turnOff()
+        ambibox.unlock()
+        ambibox.disconnect()
         if self.inDataMap is not None:
             self.inDataMap.close()
             self.inDataMap = None
 
-debug("service AmbiBox")
-notification(__language__(32030))
+ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
+if ambibox.connect() == 0:
+    notification(__language__(32030))
+    player = CapturePlayer()
+else:
+    notification(__language__(32031))
+    player = None
 
-player = CapturePlayer()
 while not xbmc.abortRequested:
-    xbmc.sleep(1000)
+    if player is None:
+        xbmc.sleep(1000)
+        if ambibox.connect() == 0:
+            notification(__language__(32030))
+            player = CapturePlayer()
+    else:
+        xbmc.sleep(100)
 
-# set off
-notification(__language__(32031))
-debug("set status off for AmbiBox")
-player.close()
-player = None
+if player is not None:
+    # set off
+    notification(__language__(32032))
+    player.close()
+    player = None
