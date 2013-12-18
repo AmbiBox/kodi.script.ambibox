@@ -16,12 +16,13 @@
 
   <!-- menu -->
   <string id="32020">Выберите профиль</string>
-  <string id="32021">Выключить</string>
+  <string id="32021">Выключить подсветку</string>
+  <string id="32022">Включить подсветку</string>
 
   <!-- Notification -->
-  <string id="32030">Connected to AmbiBox</string>
-  <string id="32031">Failed to connect to AmbiBox</string>
-  <string id="32032">Lightpack выключен</string>
+  <string id="32030">Подключение к AmbiBox</string>
+  <string id="32031">Ошибка подключения к AmbiBox</string>
+  <string id="32032">Ambibox выключен</string>
   <string id="32033">Установлен профиль %s</string>
 
 </strings>

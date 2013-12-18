@@ -16,12 +16,13 @@
 
   <!-- menu -->
   <string id="32020">Select profile</string>
-  <string id="32021">Off</string>
+  <string id="32021">Backlight Off</string>
+  <string id="32022">Backlight on</string>
 
   <!-- Notification -->
   <string id="32030">Connected to AmbiBox</string>
   <string id="32031">Failed to connect to AmbiBox</string>
-  <string id="32032">Set status OFF</string>
+  <string id="32032">Ambibox turned off</string>
   <string id="32033">Set profile %s</string>
 
 </strings>

@@ -33,7 +33,6 @@ def notification(text):
         smallicon = icon.encode("utf-8")
         xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
 
-
 def debug(msg):
     xbmc.log("### [%s] - %s" % (__scriptname__, msg,), level=xbmc.LOGDEBUG)
 

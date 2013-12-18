@@ -4,6 +4,7 @@
     <import addon="xbmc.python" version="2.1.0"/>
   </requires>
   <extension point="xbmc.service" library="default.py" />
+  <extension point="xbmc.python.script" library="service.py"/>
 
   <extension point="xbmc.addon.metadata">
     <summary lang="en">AmbiBox manager</summary>
