@@ -18,6 +18,8 @@
   <string id="32020">Select profile</string>
   <string id="32021">Backlight Off</string>
   <string id="32022">Backlight on</string>
+  <string id="32023">Show menu when playing</string>
+  <string id="32024">Do not show menu when playing</string>
 
   <!-- Notification -->
   <string id="32030">Connected to AmbiBox</string>

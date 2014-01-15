@@ -1,19 +1,22 @@
-﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <settings>
   <!-- General -->
   <category label="32000">
     <setting id="host" type="text" label="32001"  default="127.0.0.1" /> 
     <setting id="port" type="number" label="32002" default="3636" /> 
-	  <setting id="notification" type="bool" label="32003" default="true" /> 
+    <setting id="notification" type="bool" label="32003" default="true" />
   </category>
   
   <category label="32010">
     <setting id="default_enable" type="bool" label="32011"  default="true" /> 
     <setting id="default_profile" type="text" label="32012" default="default" subsetting="true" visible="eq(-1,true)" /> 
-	  <setting id="video_enable" type="bool" label="32013" default="true" /> 
+    <setting id="video_enable" type="bool" label="32013" default="true" /> 
     <setting id="video_profile" type="text" label="32014" default="default" subsetting="true" visible="eq(-1,true)"  /> 
-	  <setting id="audio_enable" type="bool" label="32015" default="true" /> 
+    <setting id="audio_enable" type="bool" label="32015" default="true" /> 
     <setting id="audio_profile" type="text" label="32016" default="default" subsetting="true" visible="eq(-1,true)"   /> 
   </category>
-  
+
+  <category label="32020">
+    <setting id="show_menu" type="number" label="32023" value="1" default="1" />  
+  </category>
 </settings>

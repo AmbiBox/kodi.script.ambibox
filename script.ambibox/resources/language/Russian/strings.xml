@@ -18,6 +18,8 @@
   <string id="32020">Выберите профиль</string>
   <string id="32021">Выключить подсветку</string>
   <string id="32022">Включить подсветку</string>
+  <string id="32023">Показать меню при воспроизведении</string>
+  <string id="32024">Не показывать меню при воспроизведении</string>
 
   <!-- Notification -->
   <string id="32030">Подключение к AmbiBox</string>

@@ -2,6 +2,7 @@
 import os
 import sys
 import mmap
+import time
 
 # Modules XBMC
 import xbmc
@@ -14,7 +15,7 @@ import AmbiBox
 __addon__ = xbmcaddon.Addon()
 __cwd__ = __addon__.getAddonInfo('path')
 __scriptname__ = __addon__.getAddonInfo('name')
-__settings__ = xbmcaddon.Addon("script.ambibox")
+__settings__ = xbmcaddon.Addon("script.ambibox") 
 __language__ = __settings__.getLocalizedString
 
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
@@ -24,6 +25,7 @@ sys.path.append(__resource__)
 from Media import *
 media = Media()
 
+ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
 def notification(text):
     text = text.encode('utf-8')
@@ -44,9 +46,10 @@ def info(msg):
 class CapturePlayer(xbmc.Player):
     def __init__(self):
         self.inDataMap = None
-        self.setProfile(__settings__.getSetting("default_enable"), __settings__.getSetting("default_profile"))
+        #self.setProfile(__settings__.getSetting("default_enable"), __settings__.getSetting("default_profile"))
 
-    def setProfile(self, enable, profile):
+    def setProfile(self, enable, profile): 
+        ambibox.connect()
         ambibox.lock()
         if enable == 'true':
             notification(__language__(32033) % profile)
@@ -58,11 +61,36 @@ class CapturePlayer(xbmc.Player):
         ambibox.unlock()
 
     def onPlayBackStarted(self):
-        if self.isPlayingAudio():
-            self.setProfile(__settings__.getSetting("audio_enable"), __settings__.getSetting("audio_profile"))
+            ambibox.connect()   
+            __settings = xbmcaddon.Addon("script.ambibox") 
+            show_menu = int(__settings.getSetting("show_menu"))
+            if (show_menu == 1):
+                menu = ambibox.getProfiles()
+                menu.append(__language__(32021))  
+                menu.append(__language__(32022))
+                off = len(menu)-2 
+                on = len(menu)-1
+                quit = False  
+                time.sleep(1)        
+                selected = xbmcgui.Dialog().select(__language__(32020), menu)
+                while not quit:      
+                    if selected != -1:
+                        ambibox.lock()
+                        if (off == int(selected)):
+                            ambibox.turnOff() 
+                        elif (on == int(selected)):
+                            ambibox.turnOn() 
+                        else:
+                            ambibox.turnOn()
+                            ambibox.setProfile(menu[selected])
+                        ambibox.unlock()
+                    quit = True        
+                    #if self.isPlayingAudio():
+                    #self.setProfile(__settings__.getSetting("audio_enable"), __settings__.getSetting("audio_profile"))
 
-        if self.isPlayingVideo():
-            self.setProfile(__settings__.getSetting("video_enable"), __settings__.getSetting("video_profile"))
+                    #if self.isPlayingVideo():
+                    #self.setProfile(__settings__.getSetting("video_enable"), __settings__.getSetting("video_profile"))
+
 
             capture = xbmc.RenderCapture()
 
@@ -70,9 +98,9 @@ class CapturePlayer(xbmc.Player):
             width = infos[0]
             height = infos[1]
             ratio = infos[2]
-            debug("%d => %dx%d" % (ratio, width, height))
+            info("%d => %dx%d" % (ratio, width, height))
 
-            self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMem', mmap.ACCESS_WRITE)
+            self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
 
             capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
 
@@ -114,12 +142,17 @@ class CapturePlayer(xbmc.Player):
             self.inDataMap = None
 
     def onPlayBackStopped(self):
-        self.setProfile(__settings__.getSetting("default_enable"), __settings__.getSetting("default_profile"))
+        ambibox.connect()
+        #self.setProfile(__settings__.getSetting("default_enable"), __settings__.getSetting("default_profile"))
         if self.inDataMap is not None:
             self.inDataMap.close()
-            self.inDataMap = None
+            self.inDataMap = None 
+        ambibox.lock()
+        ambibox.turnOff()
+        ambibox.unlock()
 
-    def close(self):
+    def close(self): 
+        ambibox.connect()
         ambibox.lock()
         ambibox.turnOff()
         ambibox.unlock()
@@ -128,7 +161,7 @@ class CapturePlayer(xbmc.Player):
             self.inDataMap.close()
             self.inDataMap = None
 
-ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
+#ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 if ambibox.connect() == 0:
     notification(__language__(32030))
     player = CapturePlayer()
