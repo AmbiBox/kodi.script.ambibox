@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="script.ambibox" name="AmbiBox" version="0.0.4" provider-name="AmbiBox">
+<!DOCTYPE window PUBLIC "http://www.w3.org/2001/XMLSchema" "http://xbmc.org/xbmc.xsd">
+<addon id="script.ambibox" name="AmbiBox" version="0.0.5" provider-name="AmbiBox">
   <requires>
     <import addon="xbmc.python" version="2.1.0"/>
   </requires>
   <extension point="xbmc.service" library="default.py" />
-  <extension point="xbmc.python.script" library="service.py"/>
 
   <extension point="xbmc.addon.metadata">
     <summary lang="en">AmbiBox manager</summary>

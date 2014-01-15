@@ -1,4 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!DOCTYPE window PUBLIC "http://www.w3.org/2001/XMLSchema" "http://xbmc.org/xbmc.xsd">
 <strings>
   <!-- category settings -->
   <string id="32000">Основные</string>
@@ -16,15 +17,12 @@
 
   <!-- menu -->
   <string id="32020">Выберите профиль</string>
-  <string id="32021">Выключить подсветку</string>
-  <string id="32022">Включить подсветку</string>
-  <string id="32023">Показать меню при воспроизведении</string>
-  <string id="32024">Не показывать меню при воспроизведении</string>
+  <string id="32021">Выключить</string>
 
   <!-- Notification -->
-  <string id="32030">Подключение к AmbiBox</string>
-  <string id="32031">Ошибка подключения к AmbiBox</string>
-  <string id="32032">Ambibox выключен</string>
+  <string id="32030">Connected to AmbiBox</string>
+  <string id="32031">Failed to connect to AmbiBox</string>
+  <string id="32032">Lightpack выключен</string>
   <string id="32033">Установлен профиль %s</string>
 
 </strings>
