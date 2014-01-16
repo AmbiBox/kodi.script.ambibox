@@ -26,7 +26,15 @@ class Media:
         ratio = self.mi.Get(Stream.Video, 0, "PixelAspectRatio")
         dar = self.mi.Get(Stream.Video, 0, "DisplayAspectRatio") #added to get dar
         self.mi.Close()
-        width = int(width)
-        height = int(height)
-        dar = float(dar)
+        try:
+            width = int(float(width))
+            height = int(float(height))
+        except:
+            width = int(0)
+            height = int(0)
+        try:
+            dar = float(dar)
+        except:
+            dat = float(0)
+
         return [width, height, 1, dar] #mod to return dar
