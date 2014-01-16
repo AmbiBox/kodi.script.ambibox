@@ -210,7 +210,7 @@ def SetAbxProfile(dar):
 def GetProfileName(pfls, DisplayAspectRatio):
     __settings = xbmcaddon.Addon("script.ambibox")
     fname = __data__ + '\\dardata.xml'
-    if os.path.exists(fname):
+    if os.path.isfile(fname):
         try:
             doc = ElementTree.parse(fname)
         except:
