@@ -52,6 +52,7 @@ def info(msg):
 class CapturePlayer(xbmc.Player):
 
     def __init__(self):
+        xbmc.Player.__init__(self)
         self.inDataMap = None
 
     def setProfile(self, enable, profile):
@@ -83,7 +84,7 @@ class CapturePlayer(xbmc.Player):
                     ambibox.turnOn()
                 else:
                     ambibox.turnOn()
-                    ambibox.setProfile(menu[selected])
+                    self.setProfile('true', menu[selected])
                 ambibox.unlock()
             quit = True
 
@@ -105,7 +106,10 @@ class CapturePlayer(xbmc.Player):
                 self.setProfile('true', __settings.getSetting("video_profile"))
             elif videomode == 1:  #Autoswitch
                 DAR = infos[3]
-                SetAbxProfile(DAR)
+                if DAR <> 0:
+                    SetAbxProfile(DAR)
+                else:
+                    info("Error retrieving DAR from video file")
             elif videomode == 2:   #Show menu
                 self.showmenu()
             elif videomode == 3:   #Turn off
@@ -120,47 +124,50 @@ class CapturePlayer(xbmc.Player):
                 width = infos[0]
                 height = infos[1]
                 ratio = infos[2]
+                if (width <> 0 and height <> 0 and ratio <> 0):
 
-                self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMem', mmap.ACCESS_WRITE)
+                    self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMem', mmap.ACCESS_WRITE)
 
-                capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+                    capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
 
-                while self.isPlayingVideo():
-                    capture.waitForCaptureStateChangeEvent()
-                    if capture.getCaptureState() == xbmc.CAPTURE_STATE_DONE:
-                        self.inDataMap.seek(0)
-                        seeked = self.inDataMap.read_byte()
-                        if ord(seeked) == 248:
-                            # width
-                            self.inDataMap[1] = chr(width & 0xff)
-                            self.inDataMap[2] = chr((width >> 8) & 0xff)
-                            # height
-                            self.inDataMap[3] = (chr(height & 0xff))
-                            self.inDataMap[4] = (chr((height >> 8) & 0xff))
-                            # aspect ratio
-                            self.inDataMap[5] = (chr(int(ratio * 100)))
-                            # image format
-                            fmt = capture.getImageFormat()
-                            if fmt == 'RGBA':
-                                self.inDataMap[6] = (chr(0))
-                            elif fmt == 'BGRA':
-                                self.inDataMap[6] = (chr(1))
-                            else:
-                                self.inDataMap[6] = (chr(2))
-                            image = capture.getImage()
-                            length = len(image)
-                            # datasize
-                            self.inDataMap[7] = (chr(length & 0xff))
-                            self.inDataMap[8] = (chr((length >> 8) & 0xff))
-                            self.inDataMap[9] = (chr((length >> 16) & 0xff))
-                            self.inDataMap[10] = (chr((length >> 24) & 0xff))
-                            # data
-                            self.inDataMap[11:(11+length)] = str(image)
-                            # write first byte to indicate we finished writing the data
-                            self.inDataMap[0] = (chr(240))
+                    while self.isPlayingVideo():
+                        capture.waitForCaptureStateChangeEvent()
+                        if capture.getCaptureState() == xbmc.CAPTURE_STATE_DONE:
+                            self.inDataMap.seek(0)
+                            seeked = self.inDataMap.read_byte()
+                            if ord(seeked) == 248:
+                                # width
+                                self.inDataMap[1] = chr(width & 0xff)
+                                self.inDataMap[2] = chr((width >> 8) & 0xff)
+                                # height
+                                self.inDataMap[3] = (chr(height & 0xff))
+                                self.inDataMap[4] = (chr((height >> 8) & 0xff))
+                                # aspect ratio
+                                self.inDataMap[5] = (chr(int(ratio * 100)))
+                                # image format
+                                fmt = capture.getImageFormat()
+                                if fmt == 'RGBA':
+                                    self.inDataMap[6] = (chr(0))
+                                elif fmt == 'BGRA':
+                                    self.inDataMap[6] = (chr(1))
+                                else:
+                                    self.inDataMap[6] = (chr(2))
+                                image = capture.getImage()
+                                length = len(image)
+                                # datasize
+                                self.inDataMap[7] = (chr(length & 0xff))
+                                self.inDataMap[8] = (chr((length >> 8) & 0xff))
+                                self.inDataMap[9] = (chr((length >> 16) & 0xff))
+                                self.inDataMap[10] = (chr((length >> 24) & 0xff))
+                                # data
+                                self.inDataMap[11:(11+length)] = str(image)
+                                # write first byte to indicate we finished writing the data
+                                self.inDataMap[0] = (chr(240))
 
-                self.inDataMap.close()
-                self.inDataMap = None
+                    self.inDataMap.close()
+                    self.inDataMap = None
+                else:
+                    info("Error retrieving video file dimensions")
 
     def onPlayBackEnded(self):
         __settings = xbmcaddon.Addon("script.ambibox")
@@ -203,28 +210,35 @@ def SetAbxProfile(dar):
 def GetProfileName(pfls, DisplayAspectRatio):
     __settings = xbmcaddon.Addon("script.ambibox")
     fname = __data__ + '\\dardata.xml'
-    try:
-        doc = ElementTree.parse(fname)
-    except:
-        ret = __settings.getSetting("default_profile")
-        return ret
-    root = doc.getroot()
-    apfls = root.findall('profile')
-    ret = ""
-    for apfl in apfls:
-        aname =  apfl.find('AmbiboxName').text
-        strll = apfl.find('LowerLmt').text
-        strul = apfl.find('UpperLmt').text
-        ll = float(strll)
-        ul = float(strul)
-        if (DisplayAspectRatio >=ll) and (DisplayAspectRatio <= ul):
-            ret = aname
-            break
-    if ret in pfls:
-        return ret
+    if os.path.exists(fname):
+        try:
+            doc = ElementTree.parse(fname)
+        except:
+            ret = __settings.getSetting("default_profile")
+            return ret
+        root = doc.getroot()
+        apfls = root.findall('profile')
+        ret = ""
+        for apfl in apfls:
+            aname =  apfl.find('AmbiboxName').text
+            strll = apfl.find('LowerLmt').text
+            strul = apfl.find('UpperLmt').text
+            ll = float(strll)
+            ul = float(strul)
+            if (DisplayAspectRatio >=ll) and (DisplayAspectRatio <= ul):
+                ret = aname
+                break
+        if ret in pfls:
+            return ret
+        else:
+            info("profile in xml not found by Ambibox")
+            ret = __settings.getSetting("default_profile")
+            return ret
     else:
+        info("dardata.xml is missing")
         ret = __settings.getSetting("default_profile")
         return ret
+
 # End of additional functions
 
 

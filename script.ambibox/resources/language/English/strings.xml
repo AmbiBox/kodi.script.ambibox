@@ -19,7 +19,7 @@
 
   <string id="32025">  Choose -></string>
   <string id="32026">Use default video profile</string>
-  <string id="32027">Auto switch based on AR (requires darprofiles.xml)</string>
+  <string id="32027">Auto switch based on AR (requires dardata.xml)</string>
   <string id="32028">Show menu of profiles</string>
   <string id="32029">Turn off LEDs</string>
 
