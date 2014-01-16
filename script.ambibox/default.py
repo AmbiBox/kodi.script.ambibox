@@ -96,7 +96,10 @@ class CapturePlayer(xbmc.Player):
 
         if self.isPlayingVideo():
             videomode = __settings.getSetting("video_choice")
-            videomode = int(videomode)
+            try:
+                videomode = int(videomode)
+            except:
+                videomode = 2
 
             if videomode == 0:    #Use Default Video Profile
                 self.setProfile('true', __settings.getSetting("video_profile"))
