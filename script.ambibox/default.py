@@ -111,7 +111,9 @@ class CapturePlayer(xbmc.Player):
                 else:
                     info("Error retrieving DAR from video file")
             elif videomode == 2:   #Show menu
-                self.showmenu()
+                show_menu = int(__settings.getSetting("show_menu"))
+                if (show_menu == 1):
+                    self.showmenu()
             elif videomode == 3:   #Turn off
                 ambibox.lock()
                 ambibox.turnOff()
