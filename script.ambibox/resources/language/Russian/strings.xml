@@ -8,10 +8,10 @@
   <string id="32003">Уведомления</string>
 
   <string id="32010">Профили</string>
-  <string id="32011">Включать по-умолчанию</string>
-  <string id="32012">Профиль по-умолчанию</string>
+  <string id="32011">Включать профиль по умолчанию</string>
+  <string id="32012">Профиль по умолчанию</string>
   <string id="32013">Включать для видео</string>
-  <string id="32014">Профиль для видео</string>
+  <string id="32014">Профиль для видео по умолчанию</string>
   <string id="32015">Включать для аудио</string>
   <string id="32016">Профиль для аудио</string>
   <string id="32017">Использование DirectXBMC захват </string>
@@ -26,12 +26,15 @@
 
   <!-- menu -->
   <string id="32020">Выберите профиль</string>
-  <string id="32021">Выключить</string>
+  <string id="32021">Выключить подсветку</string>
+  <string id="32022">Включить подсветку</string>
+  <string id="32023">Показать меню при воспроизведении</string>
+  <string id="32024">Не показывать меню при воспроизведении</string>
 
   <!-- Notification -->
-  <string id="32030">Connected to AmbiBox</string>
-  <string id="32031">Failed to connect to AmbiBox</string>
-  <string id="32032">Lightpack выключен</string>
+  <string id="32030">Подключение к AmbiBox</string>
+  <string id="32031">Ошибка подключения к AmbiBox</string>
+  <string id="32032">Ambibox выключен</string>
   <string id="32033">Установлен профиль %s</string>
 
 </strings>
