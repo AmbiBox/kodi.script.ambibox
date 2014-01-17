@@ -1,4 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!DOCTYPE window PUBLIC "http://www.w3.org/2001/XMLSchema" "http://xbmc.org/xbmc.xsd">
 <strings>
   <!-- category settings -->
   <string id="32000">Основные</string>
@@ -13,18 +14,24 @@
   <string id="32014">Профиль для видео</string>
   <string id="32015">Включать для аудио</string>
   <string id="32016">Профиль для аудио</string>
+  <string id="32017">Использование DirectXBMC захват </string>
+  <string id="32018">Используйте Автоматическое переключение Формат изображения </string>
+  <string id="32019">На воспроизведения видео: </string>
+
+  <string id="32025">  Выберите -></string>
+  <string id="32026">Используйте профиля видео по умолчанию</string>
+  <string id="32027">Автоматический переключатель на основе AR (требуется dardata.xml)</string>
+  <string id="32028">Показать меню профилей </string>
+  <string id="32029">выключать LEDs</string>
 
   <!-- menu -->
   <string id="32020">Выберите профиль</string>
-  <string id="32021">Выключить подсветку</string>
-  <string id="32022">Включить подсветку</string>
-  <string id="32023">Показать меню при воспроизведении</string>
-  <string id="32024">Не показывать меню при воспроизведении</string>
+  <string id="32021">Выключить</string>
 
   <!-- Notification -->
-  <string id="32030">Подключение к AmbiBox</string>
-  <string id="32031">Ошибка подключения к AmbiBox</string>
-  <string id="32032">Ambibox выключен</string>
+  <string id="32030">Connected to AmbiBox</string>
+  <string id="32031">Failed to connect to AmbiBox</string>
+  <string id="32032">Lightpack выключен</string>
   <string id="32033">Установлен профиль %s</string>
 
 </strings>
