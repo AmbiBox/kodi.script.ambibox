@@ -170,21 +170,31 @@ class CapturePlayer(xbmc.Player):
                     info("Error retrieving video file dimensions")
 
     def onPlayBackEnded(self):
+        ambibox.connect()
         __settings = xbmcaddon.Addon("script.ambibox")
         self.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
         if self.inDataMap is not None:
             self.inDataMap.close()
             self.inDataMap = None
+        ambibox.lock()
+        ambibox.turnOff()
+        ambibox.unlock()
+
 
     def onPlayBackStopped(self):
+        ambibox.connect()
         __settings = xbmcaddon.Addon("script.ambibox")
         self.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
         if self.inDataMap is not None:
             self.inDataMap.close()
             self.inDataMap = None
+        ambibox.lock()
+        ambibox.turnOff()
+        ambibox.unlock()
 
 
     def close(self):
+        ambibox.connect()
         ambibox.lock()
         ambibox.turnOff()
         ambibox.unlock()
