@@ -19,4 +19,7 @@
     <setting id="directXBMC_enable" type="bool" label="32017" default="true" subsetting="true" enable="!eq(-2,3)" />
 
   </category>
+  <category label="32020">
+    <setting id="show_menu" type="number" label="32023" value="1" default="1" />
+  </category>
 </settings>
