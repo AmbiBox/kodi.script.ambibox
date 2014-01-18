@@ -1,4 +1,3 @@
-
 #Modules General
 import AmbiBox
 import os
@@ -15,11 +14,11 @@ __language__ = __settings__.getLocalizedString
 #########################################################################################################
 ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 ambibox.connect()    
-showmenu = int(__settings__.getSetting("show_menu"))
+showmenu = __settings__.getSetting("show_menu")
 menu = ambibox.getProfiles()
 menu.append(__language__(32021))  
 menu.append(__language__(32022))
-if (showmenu == 0): 
+if (showmenu == "false"): 
     menu.append(__language__(32023))
 else:
     menu.append(__language__(32024))
@@ -31,10 +30,10 @@ quit = False
 selected = xbmcgui.Dialog().select(__language__(32020), menu) 
 if selected != -1: 
     if (show == int(selected)):        
-        if (showmenu == 0):
-            __settings__.setSetting("show_menu", "1")
+        if (showmenu == "false"):
+            __settings__.setSetting("show_menu", "true")
         else:
-            __settings__.setSetting("show_menu", "0")
+            __settings__.setSetting("show_menu", "false")
     else:
         ambibox.lock()
         if (off == int(selected)):
