@@ -17,7 +17,7 @@
     <setting id="video_choice" type ="enum" label="32025" lvalues="32026|32027|32028|32029" default="2" />
     <setting id="video_profile" type="text" label="32014" default="default" subsetting="true" enable="eq(-1,0)"  />
     <setting id="directXBMC_enable" type="bool" label="32017" default="true" subsetting="true" enable="!eq(-2,3)" />
-    <setting id="show_menu" type="bool" label="32023" value="true" default="true" />
+    <setting id="show_menu" type="bool" label="32023" value="true" default="true" visible="false" />
 
  </category>
 <!--   <category label="32020">
