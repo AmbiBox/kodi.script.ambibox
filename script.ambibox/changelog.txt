@@ -5,3 +5,7 @@
 
 Added automatic display aspect ratio switching
 Added switch to turn off screen capture mode within XBMC
+
+0.0.6
+
+Added translation of smb paths to UNC paths in media.py for mediainfo.dll compatibility

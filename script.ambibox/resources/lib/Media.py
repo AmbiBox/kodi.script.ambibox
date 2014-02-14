@@ -20,7 +20,8 @@ class Media:
         self.mi = MediaInfo()
 
     def getInfos(self, file):
-        self.mi.Open(file)
+        nfile = self.smbToUNC(file)
+        self.mi.Open(nfile)
         width = self.mi.Get(Stream.Video, 0, "Width")
         height = self.mi.Get(Stream.Video, 0, "Height")
         ratio = self.mi.Get(Stream.Video, 0, "PixelAspectRatio")
@@ -35,6 +36,20 @@ class Media:
         try:
             dar = float(dar)
         except:
-            dat = float(0)
+            dar = float(0)
 
         return [width, height, 1, dar] #mod to return dar
+    def smbToUNC(self, smbFile):
+        testFile = smbFile[0:3]
+        newFile = ""
+        if testFile == "smb":
+            for i in xrange(0,len(smbFile)):
+                if smbFile[i] == "/":
+                    newFile = newFile + "\\"
+                else:
+                    newFile = newFile + smbFile[i]
+            retFile = newFile[4:]
+        else:
+            retFile = smbFile
+        return retFile
+
