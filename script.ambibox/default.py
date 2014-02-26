@@ -89,9 +89,18 @@ class CapturePlayer(xbmc.Player):
             quit = True
 
     def onPlayBackStarted(self):
-        ambibox.connect()
-        infos = media.getInfos(self.getPlayingFile())
         __settings = xbmcaddon.Addon("script.ambibox")
+        ambibox.connect()
+        xxx = self.getPlayingFile()
+        infos = media.getInfos(xxx)
+        if infos[0] == 0:
+            infos[0] = int(__settings.getSetting("screen_x"))
+        if infos[1] == 0:
+            infos[1] = int(__settings.getSetting("screen_y"))
+        if infos[2] == 0:
+            infos[2] = 1
+        if infos[3] == 0:
+            infos[3] = float(infos[0])/float(infos[1])
         if self.isPlayingAudio():
             self.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 

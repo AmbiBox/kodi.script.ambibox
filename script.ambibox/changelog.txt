@@ -9,3 +9,7 @@ Added switch to turn off screen capture mode within XBMC
 0.0.6
 
 Added translation of smb paths to UNC paths in media.py for mediainfo.dll compatibility
+
+0.0.7
+
+Added screen resolution settings and default to these for XBMCdirect if file dimensions not discoverable

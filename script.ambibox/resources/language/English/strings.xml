@@ -8,6 +8,8 @@
   <string id="32003">Notification</string>
 
   <string id="32010">Profiles</string>
+  <string id="32041">Screen X resolution (pixels)</string>
+  <string id="32042">Screen Y resolution (pixels)</string>
   <string id="32011">Enable default profile</string>
   <string id="32012">Default profile</string>
   <string id="32013">Enable video profile</string>

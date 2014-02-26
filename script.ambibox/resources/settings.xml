@@ -6,6 +6,8 @@
     <setting id="host" type="text" label="32001"  default="127.0.0.1" /> 
     <setting id="port" type="number" label="32002" default="3636" /> 
 	  <setting id="notification" type="bool" label="32003" default="true" /> 
+    <setting id="screen_x" type="number" label="32041"  default="1920" /> 
+    <setting id="screen_y" type="number" label="32042"  default="1080" /> 
   </category>
   
   <category label="32010">
