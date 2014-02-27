@@ -187,9 +187,9 @@ class CapturePlayer(xbmc.Player):
         if self.inDataMap is not None:
             self.inDataMap.close()
             self.inDataMap = None
-        ambibox.lock()
-        ambibox.turnOff()
-        ambibox.unlock()
+ #       ambibox.lock()
+ #       ambibox.turnOff()
+ #       ambibox.unlock()
 
 
     def onPlayBackStopped(self):
@@ -199,9 +199,9 @@ class CapturePlayer(xbmc.Player):
         if self.inDataMap is not None:
             self.inDataMap.close()
             self.inDataMap = None
-        ambibox.lock()
-        ambibox.turnOff()
-        ambibox.unlock()
+ #       ambibox.lock()
+ #       ambibox.turnOff()
+ #       ambibox.unlock()
 
 
     def close(self):
