@@ -137,7 +137,7 @@ class CapturePlayer(xbmc.Player):
                 ratio = infos[2]
                 if (width <> 0 and height <> 0 and ratio <> 0):
 
-                    self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMem', mmap.ACCESS_WRITE)
+                    self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory_Name', mmap.ACCESS_WRITE)
 
                     capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
 
