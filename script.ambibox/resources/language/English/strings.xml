@@ -39,4 +39,8 @@
   <string id="32032">Ambibox turned off</string>
   <string id="32033">Set profile %s</string>
 
+  <!-- 3D -->
+  <string id="32043">Profile for 3D TAB</string>
+  <string id="32044">Profile for 3D SBS</string>
+
 </strings>

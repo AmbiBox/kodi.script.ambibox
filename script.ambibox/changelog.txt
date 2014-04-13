@@ -13,3 +13,7 @@ Added translation of smb paths to UNC paths in media.py for mediainfo.dll compat
 0.0.7
 
 Added screen resolution settings and default to these for XBMCdirect if file dimensions not discoverable
+
+0.0.8
+
+Added profiles for 3D TAB and SBS

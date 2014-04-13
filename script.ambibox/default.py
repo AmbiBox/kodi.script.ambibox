@@ -4,13 +4,14 @@ import sys
 import mmap
 import time
 
-# import rpdb2
-# rpdb2.start_embedded_debugger('pw')
+#import rpdb2
+#rpdb2.start_embedded_debugger('pw')
 
 # Modules XBMC
 import xbmc
 import xbmcgui
 import xbmcaddon
+import re
 
 # Modules AmbiBox
 import AmbiBox
@@ -54,6 +55,9 @@ class CapturePlayer(xbmc.Player):
     def __init__(self):
         xbmc.Player.__init__(self)
         self.inDataMap = None
+        self.re3D = re.compile("[-. _]3d[-. _]", re.IGNORECASE)
+        self.reTAB = re.compile("[-. _]h?tab[-. _]", re.IGNORECASE)
+        self.reSBS = re.compile("[-. _]h?sbs[-. _]", re.IGNORECASE)
 
     def setProfile(self, enable, profile):
         ambibox.lock()
@@ -93,40 +97,50 @@ class CapturePlayer(xbmc.Player):
         ambibox.connect()
         xxx = self.getPlayingFile()
         infos = media.getInfos(xxx)
-        if infos[0] == 0:
-            infos[0] = int(__settings.getSetting("screen_x"))
-        if infos[1] == 0:
-            infos[1] = int(__settings.getSetting("screen_y"))
-        if infos[2] == 0:
-            infos[2] = 1
-        if infos[3] == 0:
-            infos[3] = float(infos[0])/float(infos[1])
-        if self.isPlayingAudio():
-            self.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
+        m = self.re3D.search(xxx)
+        if m:
+            n = self.reTAB.search(xxx)
+            if n:
+                self.setProfile('true', __settings.getSetting("3D_tab"))
+            else:
+                n = self.reSBS.search(xxx)
+                if n:
+                    self.setProfile('true', __settings.getSetting("3D_sbs"))
+        else:
+            if infos[0] == 0:
+                infos[0] = int(__settings.getSetting("screen_x"))
+            if infos[1] == 0:
+                infos[1] = int(__settings.getSetting("screen_y"))
+            if infos[2] == 0:
+                infos[2] = 1
+            if infos[3] == 0:
+                infos[3] = float(infos[0])/float(infos[1])
+            if self.isPlayingAudio():
+                self.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
-        if self.isPlayingVideo():
-            videomode = __settings.getSetting("video_choice")
-            try:
-                videomode = int(videomode)
-            except:
-                videomode = 2
+            if self.isPlayingVideo():
+                videomode = __settings.getSetting("video_choice")
+                try:
+                    videomode = int(videomode)
+                except:
+                    videomode = 2
 
-            if videomode == 0:    #Use Default Video Profile
-                self.setProfile('true', __settings.getSetting("video_profile"))
-            elif videomode == 1:  #Autoswitch
-                DAR = infos[3]
-                if DAR <> 0:
-                    SetAbxProfile(DAR)
-                else:
-                    info("Error retrieving DAR from video file")
-            elif videomode == 2:   #Show menu
-                show_menu = int(__settings.getSetting("show_menu"))
-                if (show_menu == 1):
-                    self.showmenu()
-            elif videomode == 3:   #Turn off
-                ambibox.lock()
-                ambibox.turnOff()
-                ambibox.unlock()
+                if videomode == 0:    #Use Default Video Profile
+                    self.setProfile('true', __settings.getSetting("video_profile"))
+                elif videomode == 1:  #Autoswitch
+                    DAR = infos[3]
+                    if DAR <> 0:
+                        SetAbxProfile(DAR)
+                    else:
+                        info("Error retrieving DAR from video file")
+                elif videomode == 2:   #Show menu
+                    show_menu = int(__settings.getSetting("show_menu"))
+                    if (show_menu == 1):
+                        self.showmenu()
+                elif videomode == 3:   #Turn off
+                    ambibox.lock()
+                    ambibox.turnOff()
+                    ambibox.unlock()
 
             if __settings.getSetting("directXBMC_enable") == 'true':   #Added
 

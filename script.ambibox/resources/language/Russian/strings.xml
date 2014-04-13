@@ -39,4 +39,8 @@
   <string id="32032">Ambibox выключен</string>
   <string id="32033">Установлен профиль %s</string>
 
+  <!-- 3D -->
+  <string id="32043">Профиль 3D TAB</string>
+  <string id="32044">Профиль 3D SBS</string>
+
 </strings>
