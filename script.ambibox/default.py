@@ -16,18 +16,18 @@ import re
 # Modules AmbiBox
 import AmbiBox
 
-from xml.etree import ElementTree    #Added
+from xml.etree import ElementTree
 
 __addon__ = xbmcaddon.Addon()
 __cwd__ = __addon__.getAddonInfo('path')
 __scriptname__ = __addon__.getAddonInfo('name')
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __language__ = __settings__.getLocalizedString
-__data__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'data'))    #Added
+__data__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'data'))
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 
 sys.path.append(__resource__)
-sys.path.append(__data__)  #Added
+sys.path.append(__data__)
 
 from Media import *
 media = Media()
@@ -97,28 +97,32 @@ class CapturePlayer(xbmc.Player):
         ambibox.connect()
         xxx = self.getPlayingFile()
         infos = media.getInfos(xxx)
-        m = self.re3D.search(xxx)
-        if m:
-            n = self.reTAB.search(xxx)
-            if n:
-                self.setProfile('true', __settings.getSetting("3D_tab"))
-            else:
-                n = self.reSBS.search(xxx)
-                if n:
-                    self.setProfile('true', __settings.getSetting("3D_sbs"))
-        else:
-            if infos[0] == 0:
-                infos[0] = int(__settings.getSetting("screen_x"))
-            if infos[1] == 0:
-                infos[1] = int(__settings.getSetting("screen_y"))
-            if infos[2] == 0:
-                infos[2] = 1
-            if infos[3] == 0:
-                infos[3] = float(infos[0])/float(infos[1])
-            if self.isPlayingAudio():
+        if infos[0] == 0:
+            infos[0] = int(__settings.getSetting("screen_x"))
+        if infos[1] == 0:
+            infos[1] = int(__settings.getSetting("screen_y"))
+        if infos[2] == 0:
+            infos[2] = 1
+        if infos[3] == 0:
+            infos[3] = float(infos[0])/float(infos[1])
+
+        if self.isPlayingAudio():
                 self.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
-            if self.isPlayingVideo():
+        if self.isPlayingVideo():
+            m = self.re3D.search(xxx)
+            if m:
+                n = self.reTAB.search(xxx)
+                if n:
+                    self.setProfile('true', __settings.getSetting("3D_tab"))
+                else:
+                    n = self.reSBS.search(xxx)
+                    if n:
+                        self.setProfile('true', __settings.getSetting("3D_sbs"))
+                    else:
+                        info("Error in 3D filename - using default settings")
+                        self.setProfile('true', __settings.getSetting("video_profile"))
+            else:
                 videomode = __settings.getSetting("video_choice")
                 try:
                     videomode = int(videomode)
@@ -201,10 +205,6 @@ class CapturePlayer(xbmc.Player):
         if self.inDataMap is not None:
             self.inDataMap.close()
             self.inDataMap = None
- #       ambibox.lock()
- #       ambibox.turnOff()
- #       ambibox.unlock()
-
 
     def onPlayBackStopped(self):
         ambibox.connect()
@@ -213,10 +213,6 @@ class CapturePlayer(xbmc.Player):
         if self.inDataMap is not None:
             self.inDataMap.close()
             self.inDataMap = None
- #       ambibox.lock()
- #       ambibox.turnOff()
- #       ambibox.unlock()
-
 
     def close(self):
         ambibox.connect()
@@ -229,8 +225,6 @@ class CapturePlayer(xbmc.Player):
             self.inDataMap.close()
             self.inDataMap = None
 
-
-# Added functions
 def SetAbxProfile(dar):
     __settings = xbmcaddon.Addon("script.ambibox")
     ambibox = AmbiBox.AmbiBox(__settings.getSetting("host"), int(__settings.getSetting("port")))
@@ -240,7 +234,6 @@ def SetAbxProfile(dar):
         pname = GetProfileName(pfls, dar)
         player.setProfile('true', pname)
     return ret
-
 
 def GetProfileName(pfls, DisplayAspectRatio):
     __settings = xbmcaddon.Addon("script.ambibox")
@@ -273,9 +266,6 @@ def GetProfileName(pfls, DisplayAspectRatio):
         info("dardata.xml is missing")
         ret = __settings.getSetting("default_profile")
         return ret
-
-# End of additional functions
-
 
 if ambibox.connect() == 0:
     notification(__language__(32030))
