@@ -17,3 +17,7 @@ Added screen resolution settings and default to these for XBMCdirect if file dim
 0.0.8
 
 Added profiles for 3D TAB and SBS
+
+0.0.9
+
+Removed 3D settings from settings screen and implemented them in dardata.xml

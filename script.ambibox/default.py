@@ -111,40 +111,43 @@ class CapturePlayer(xbmc.Player):
 
         if self.isPlayingVideo():
             m = self.re3D.search(xxx)
+            vidfmt=""
             if m:
                 n = self.reTAB.search(xxx)
                 if n:
-                    self.setProfile('true', __settings.getSetting("3D_tab"))
+                    vidfmt = "TAB"
                 else:
                     n = self.reSBS.search(xxx)
                     if n:
-                        self.setProfile('true', __settings.getSetting("3D_sbs"))
+                        vidfmt = "SBS"
                     else:
                         info("Error in 3D filename - using default settings")
                         self.setProfile('true', __settings.getSetting("video_profile"))
             else:
-                videomode = __settings.getSetting("video_choice")
-                try:
-                    videomode = int(videomode)
-                except:
-                    videomode = 2
+                vidfmt = "Normal"
 
-                if videomode == 0:    #Use Default Video Profile
-                    self.setProfile('true', __settings.getSetting("video_profile"))
-                elif videomode == 1:  #Autoswitch
-                    DAR = infos[3]
-                    if DAR <> 0:
-                        SetAbxProfile(DAR)
-                    else:
-                        info("Error retrieving DAR from video file")
-                elif videomode == 2:   #Show menu
-                    show_menu = int(__settings.getSetting("show_menu"))
-                    if (show_menu == 1):
-                        self.showmenu()
-                elif videomode == 3:   #Turn off
-                    ambibox.lock()
-                    ambibox.turnOff()
-                    ambibox.unlock()
+            videomode = __settings.getSetting("video_choice")
+            try:
+                videomode = int(videomode)
+            except:
+                videomode = 2
+
+            if videomode == 0:    #Use Default Video Profile
+                self.setProfile('true', __settings.getSetting("video_profile"))
+            elif videomode == 1:  #Autoswitch
+                DAR = infos[3]
+                if DAR <> 0:
+                    SetAbxProfile(DAR, vidfmt)
+                else:
+                    info("Error retrieving DAR from video file")
+            elif videomode == 2:   #Show menu
+                show_menu = int(__settings.getSetting("show_menu"))
+                if (show_menu == 1):
+                    self.showmenu()
+            elif videomode == 3:   #Turn off
+                ambibox.lock()
+                ambibox.turnOff()
+                ambibox.unlock()
 
             if __settings.getSetting("directXBMC_enable") == 'true':   #Added
 
@@ -225,17 +228,17 @@ class CapturePlayer(xbmc.Player):
             self.inDataMap.close()
             self.inDataMap = None
 
-def SetAbxProfile(dar):
+def SetAbxProfile(dar, vidfmt):
     __settings = xbmcaddon.Addon("script.ambibox")
     ambibox = AmbiBox.AmbiBox(__settings.getSetting("host"), int(__settings.getSetting("port")))
     ret = ""
     if ambibox.connect() == 0:
         pfls = ambibox.getProfiles()
-        pname = GetProfileName(pfls, dar)
+        pname = GetProfileName(pfls, dar, vidfmt)
         player.setProfile('true', pname)
     return ret
 
-def GetProfileName(pfls, DisplayAspectRatio):
+def GetProfileName(pfls, DisplayAspectRatio, vidfmt):
     __settings = xbmcaddon.Addon("script.ambibox")
     fname = __data__ + '\\dardata.xml'
     if os.path.isfile(fname):
@@ -251,9 +254,16 @@ def GetProfileName(pfls, DisplayAspectRatio):
             aname =  apfl.find('AmbiboxName').text
             strll = apfl.find('LowerLmt').text
             strul = apfl.find('UpperLmt').text
+            try:
+                strfmt = apfl.find('Format').text
+            except:
+                strfmt = "Normal"
+            if strfmt <> "SBS" and strfmt <> "TAB":
+                strfmt = "Normal"
+
             ll = float(strll)
             ul = float(strul)
-            if (DisplayAspectRatio >=ll) and (DisplayAspectRatio <= ul):
+            if (DisplayAspectRatio >=ll) and (DisplayAspectRatio <= ul) and (strfmt == vidfmt):
                 ret = aname
                 break
         if ret in pfls:
