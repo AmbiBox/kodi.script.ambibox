@@ -21,3 +21,7 @@ Added profiles for 3D TAB and SBS
 0.0.9
 
 Removed 3D settings from settings screen and implemented them in dardata.xml
+
+0.0.10
+
+Changed xbmc capture to a separate thread and implemented checking for successful capture

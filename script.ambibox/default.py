@@ -3,6 +3,9 @@ import os
 import sys
 import mmap
 import time
+import re
+import threading
+from xml.etree import ElementTree
 
 #import rpdb2
 #rpdb2.start_embedded_debugger('pw')
@@ -11,12 +14,9 @@ import time
 import xbmc
 import xbmcgui
 import xbmcaddon
-import re
 
 # Modules AmbiBox
 import AmbiBox
-
-from xml.etree import ElementTree
 
 __addon__ = xbmcaddon.Addon()
 __cwd__ = __addon__.getAddonInfo('path')
@@ -31,6 +31,7 @@ sys.path.append(__data__)
 
 from Media import *
 media = Media()
+
 
 ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
@@ -49,6 +50,7 @@ def debug(msg):
 
 def info(msg):
     xbmc.log("### [%s] - %s" % (__scriptname__, msg,), level=xbmc.LOGNOTICE)
+
 
 class CapturePlayer(xbmc.Player):
 
@@ -137,7 +139,7 @@ class CapturePlayer(xbmc.Player):
             elif videomode == 1:  #Autoswitch
                 DAR = infos[3]
                 if DAR <> 0:
-                    SetAbxProfile(DAR, vidfmt)
+                    SetAbxProfile(DAR, vidfmt, self)
                 else:
                     info("Error retrieving DAR from video file")
             elif videomode == 2:   #Show menu
@@ -150,72 +152,20 @@ class CapturePlayer(xbmc.Player):
                 ambibox.unlock()
 
             if __settings.getSetting("directXBMC_enable") == 'true':   #Added
-
-                capture = xbmc.RenderCapture()
-
-                width = infos[0]
-                height = infos[1]
-                ratio = infos[2]
-                if (width <> 0 and height <> 0 and ratio <> 0):
-
-                    self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory_Name', mmap.ACCESS_WRITE)
-
-                    capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
-
-                    while self.isPlayingVideo():
-                        capture.waitForCaptureStateChangeEvent()
-                        if capture.getCaptureState() == xbmc.CAPTURE_STATE_DONE:
-                            self.inDataMap.seek(0)
-                            seeked = self.inDataMap.read_byte()
-                            if ord(seeked) == 248:
-                                # width
-                                self.inDataMap[1] = chr(width & 0xff)
-                                self.inDataMap[2] = chr((width >> 8) & 0xff)
-                                # height
-                                self.inDataMap[3] = (chr(height & 0xff))
-                                self.inDataMap[4] = (chr((height >> 8) & 0xff))
-                                # aspect ratio
-                                self.inDataMap[5] = (chr(int(ratio * 100)))
-                                # image format
-                                fmt = capture.getImageFormat()
-                                if fmt == 'RGBA':
-                                    self.inDataMap[6] = (chr(0))
-                                elif fmt == 'BGRA':
-                                    self.inDataMap[6] = (chr(1))
-                                else:
-                                    self.inDataMap[6] = (chr(2))
-                                image = capture.getImage()
-                                length = len(image)
-                                # datasize
-                                self.inDataMap[7] = (chr(length & 0xff))
-                                self.inDataMap[8] = (chr((length >> 8) & 0xff))
-                                self.inDataMap[9] = (chr((length >> 16) & 0xff))
-                                self.inDataMap[10] = (chr((length >> 24) & 0xff))
-                                # data
-                                self.inDataMap[11:(11+length)] = str(image)
-                                # write first byte to indicate we finished writing the data
-                                self.inDataMap[0] = (chr(240))
-
-                    self.inDataMap.close()
-                    self.inDataMap = None
-                else:
-                    info("Error retrieving video file dimensions")
+                xd = XBMCDirect(infos, self)
+                xd.run()
+                xd.close()
 
     def onPlayBackEnded(self):
         ambibox.connect()
         __settings = xbmcaddon.Addon("script.ambibox")
         self.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
-        if self.inDataMap is not None:
-            self.inDataMap.close()
-            self.inDataMap = None
+
 
     def onPlayBackStopped(self):
         ambibox.connect()
         __settings = xbmcaddon.Addon("script.ambibox")
         self.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
-        if self.inDataMap is not None:
-            self.inDataMap.close()
-            self.inDataMap = None
 
     def close(self):
         ambibox.connect()
@@ -224,11 +174,103 @@ class CapturePlayer(xbmc.Player):
         ambibox.unlock()
         ambibox.disconnect()
         __settings = None
-        if self.inDataMap is not None:
-            self.inDataMap.close()
-            self.inDataMap = None
 
-def SetAbxProfile(dar, vidfmt):
+
+class XBMCDirect (threading.Thread):
+
+    def __init__(self, infos, player):
+        threading.Thread.__init__(self, name="XBMCDirect")
+        self.infos = infos
+        self.player = player
+        self.running = False
+
+    def start(self):
+        self.running = True
+        threading.Thread.start(self)
+
+    def stop(self):
+        self.running = False
+        self.join(0.5)
+        self.close()
+
+    def close(self):
+        pass
+
+    def run(self):
+        capture = xbmc.RenderCapture()
+        width = self.infos[0]
+        height = self.infos[1]
+        ratio = self.infos[2]
+        tw = capture.getHeight()
+        th = capture.getWidth()
+        tar = capture.getAspectRatio()
+        if (width <> 0 and height <> 0 and ratio <> 0):
+            inimap = mmap.mmap(0, 11, 'Inimap', mmap.ACCESS_WRITE)
+            inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            # get one frame to get length
+            aax = 0
+            while not self.player.isPlayingVideo():
+                xbmc.sleep(100)
+                continue
+            for idx in xrange(1,10):
+                xbmc.sleep(100)
+                capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+                capture.waitForCaptureStateChangeEvent(1000)
+                aax = 0
+                aax = capture.getCaptureState()
+                if aax == xbmc.CAPTURE_STATE_FAILED:
+                    capture = None
+                    capture = xbmc.RenderCapture()
+                elif aax == xbmc.CAPTURE_STATE_DONE:
+                    break
+
+            if aax != xbmc.CAPTURE_STATE_FAILED:
+                inimap[1] = chr(width & 0xff)
+                inimap[2] = chr((width >> 8) & 0xff)
+                # height
+                inimap[3] = (chr(height & 0xff))
+                inimap[4] = (chr((height >> 8) & 0xff))
+                # aspect ratio
+                inimap[5] = (chr(int(ratio * 100)))
+                # image format
+                fmt = capture.getImageFormat()
+                if fmt == 'RGBA':
+                    inimap[6] = (chr(0))
+                elif fmt == 'BGRA':
+                    inimap[6] = (chr(1))
+                else:
+                    inimap[6] = (chr(2))
+                image = capture.getImage()
+                length = len(image)
+                # datasize
+                inimap[7] = (chr(length & 0xff))
+                inimap[8] = (chr((length >> 8) & 0xff))
+                inimap[9] = (chr((length >> 16) & 0xff))
+                inimap[10] = (chr((length >> 24) & 0xff))
+                notification(__language__(32034))
+
+                #capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+
+                while self.player.isPlayingVideo():
+                    capture.waitForCaptureStateChangeEvent()
+                    if capture.getCaptureState() == xbmc.CAPTURE_STATE_DONE:
+                        inDataMap.seek(0)
+                        seeked = inDataMap.read_byte()
+                        if ord(seeked) == 248: #check that XBMC Direct is running
+                            inDataMap[1:10] = inimap[1:10]
+                            inDataMap[11:(11+length)] = str(image)
+                            # write first byte to indicate we finished writing the data
+                            inDataMap[0] = (chr(240))
+                inDataMap.close()
+                inDataMap = None
+            else:
+                info('Capture failed')
+                notification(__language__(32035))
+        else:
+            info("Error retrieving video file dimensions")
+
+
+def SetAbxProfile(dar, vidfmt, player):
     __settings = xbmcaddon.Addon("script.ambibox")
     ambibox = AmbiBox.AmbiBox(__settings.getSetting("host"), int(__settings.getSetting("port")))
     ret = ""
@@ -277,24 +319,27 @@ def GetProfileName(pfls, DisplayAspectRatio, vidfmt):
         ret = __settings.getSetting("default_profile")
         return ret
 
-if ambibox.connect() == 0:
-    notification(__language__(32030))
-    player = CapturePlayer()
-else:
-    notification(__language__(32031))
-    player = None
-
-while not xbmc.abortRequested:
-    if player is None:
-        xbmc.sleep(1000)
-        if ambibox.connect() == 0:
-            notification(__language__(32030))
-            player = CapturePlayer()
+def main():
+    if ambibox.connect() == 0:
+        notification(__language__(32030))
+        player = CapturePlayer()
     else:
-        xbmc.sleep(100)
+        notification(__language__(32031))
+        player = None
 
-if player is not None:
-    # set off
-    notification(__language__(32032))
-    player.close()
-    player = None
+    while not xbmc.abortRequested:
+        if player is None:
+            xbmc.sleep(1000)
+            if ambibox.connect() == 0:
+                notification(__language__(32030))
+                player = CapturePlayer()
+        else:
+            xbmc.sleep(100)
+
+    if player is not None:
+        # set off
+        notification(__language__(32032))
+        player.close()
+        player = None
+
+main()

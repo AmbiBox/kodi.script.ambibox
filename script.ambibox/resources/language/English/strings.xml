@@ -38,5 +38,7 @@
   <string id="32031">Failed to connect to AmbiBox</string>
   <string id="32032">Ambibox turned off</string>
   <string id="32033">Set profile %s</string>
+  <string id="32034">XBMCDirect Success</string>
+  <string id="32035">XBMCDirect Fail</string>
 
 </strings>
