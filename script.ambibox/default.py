@@ -35,6 +35,7 @@ media = Media()
 
 ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
+
 def notification(text):
     text = text.encode('utf-8')
     info(text)
@@ -113,7 +114,7 @@ class CapturePlayer(xbmc.Player):
 
         if self.isPlayingVideo():
             m = self.re3D.search(xxx)
-            vidfmt=""
+            vidfmt = ""
             if m:
                 n = self.reTAB.search(xxx)
                 if n:
@@ -138,7 +139,7 @@ class CapturePlayer(xbmc.Player):
                 self.setProfile('true', __settings.getSetting("video_profile"))
             elif videomode == 1:  #Autoswitch
                 DAR = infos[3]
-                if DAR <> 0:
+                if DAR != 0:
                     SetAbxProfile(DAR, vidfmt, self)
                 else:
                     info("Error retrieving DAR from video file")
@@ -160,7 +161,6 @@ class CapturePlayer(xbmc.Player):
         ambibox.connect()
         __settings = xbmcaddon.Addon("script.ambibox")
         self.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
-
 
     def onPlayBackStopped(self):
         ambibox.connect()
@@ -204,15 +204,15 @@ class XBMCDirect (threading.Thread):
         tw = capture.getHeight()
         th = capture.getWidth()
         tar = capture.getAspectRatio()
-        if (width <> 0 and height <> 0 and ratio <> 0):
-            inimap = mmap.mmap(0, 11, 'Inimap', mmap.ACCESS_WRITE)
+        if (width != 0 and height != 0 and ratio != 0):
+            inimap = []
             inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
             # get one frame to get length
             aax = 0
             while not self.player.isPlayingVideo():
                 xbmc.sleep(100)
                 continue
-            for idx in xrange(1,10):
+            for idx in xrange(1, 10):
                 xbmc.sleep(100)
                 capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
                 capture.waitForCaptureStateChangeEvent(1000)
@@ -225,39 +225,41 @@ class XBMCDirect (threading.Thread):
                     break
 
             if aax != xbmc.CAPTURE_STATE_FAILED:
-                inimap[1] = chr(width & 0xff)
-                inimap[2] = chr((width >> 8) & 0xff)
+                inimap.append(chr(0))
+                inimap.append(chr(width & 0xff))
+                inimap.append(chr((width >> 8) & 0xff))
                 # height
-                inimap[3] = (chr(height & 0xff))
-                inimap[4] = (chr((height >> 8) & 0xff))
+                inimap.append(chr(height & 0xff))
+                inimap.append(chr((height >> 8) & 0xff))
                 # aspect ratio
-                inimap[5] = (chr(int(ratio * 100)))
+                inimap.append(chr(int(ratio * 100)))
                 # image format
                 fmt = capture.getImageFormat()
                 if fmt == 'RGBA':
-                    inimap[6] = (chr(0))
+                    inimap.append(chr(0))
                 elif fmt == 'BGRA':
-                    inimap[6] = (chr(1))
+                    inimap.append(chr(1))
                 else:
-                    inimap[6] = (chr(2))
+                    inimap.append(chr(2))
                 image = capture.getImage()
                 length = len(image)
                 # datasize
-                inimap[7] = (chr(length & 0xff))
-                inimap[8] = (chr((length >> 8) & 0xff))
-                inimap[9] = (chr((length >> 16) & 0xff))
-                inimap[10] = (chr((length >> 24) & 0xff))
+                inimap.append(chr(length & 0xff))
+                inimap.append(chr((length >> 8) & 0xff))
+                inimap.append(chr((length >> 16) & 0xff))
+                inimap.append(chr((length >> 24) & 0xff))
+                inimapstr = "".join(inimap)
                 notification(__language__(32034))
 
                 #capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
 
                 while self.player.isPlayingVideo():
-                    capture.waitForCaptureStateChangeEvent()
+                    capture.waitForCaptureStateChangeEvent(1000)
                     if capture.getCaptureState() == xbmc.CAPTURE_STATE_DONE:
                         inDataMap.seek(0)
                         seeked = inDataMap.read_byte()
-                        if ord(seeked) == 248: #check that XBMC Direct is running
-                            inDataMap[1:10] = inimap[1:10]
+                        if ord(seeked) == 248:  #check that XBMC Direct is running
+                            inDataMap[1:10] = inimapstr[1:10]
                             inDataMap[11:(11+length)] = str(image)
                             # write first byte to indicate we finished writing the data
                             inDataMap[0] = (chr(240))
@@ -280,6 +282,7 @@ def SetAbxProfile(dar, vidfmt, player):
         player.setProfile('true', pname)
     return ret
 
+
 def GetProfileName(pfls, DisplayAspectRatio, vidfmt):
     __settings = xbmcaddon.Addon("script.ambibox")
     fname = __data__ + '\\dardata.xml'
@@ -293,19 +296,19 @@ def GetProfileName(pfls, DisplayAspectRatio, vidfmt):
         apfls = root.findall('profile')
         ret = ""
         for apfl in apfls:
-            aname =  apfl.find('AmbiboxName').text
+            aname = apfl.find('AmbiboxName').text
             strll = apfl.find('LowerLmt').text
             strul = apfl.find('UpperLmt').text
             try:
                 strfmt = apfl.find('Format').text
             except:
                 strfmt = "Normal"
-            if strfmt <> "SBS" and strfmt <> "TAB":
+            if strfmt != "SBS" and strfmt <> "TAB":
                 strfmt = "Normal"
 
             ll = float(strll)
             ul = float(strul)
-            if (DisplayAspectRatio >=ll) and (DisplayAspectRatio <= ul) and (strfmt == vidfmt):
+            if (DisplayAspectRatio >= ll) and (DisplayAspectRatio <= ul) and (strfmt == vidfmt):
                 ret = aname
                 break
         if ret in pfls:
@@ -318,6 +321,7 @@ def GetProfileName(pfls, DisplayAspectRatio, vidfmt):
         info("dardata.xml is missing")
         ret = __settings.getSetting("default_profile")
         return ret
+
 
 def main():
     if ambibox.connect() == 0:
