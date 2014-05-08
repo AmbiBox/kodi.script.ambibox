@@ -7,8 +7,9 @@ import re
 import threading
 from xml.etree import ElementTree
 
-#import rpdb2
-#rpdb2.start_embedded_debugger('pw')
+#sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
+#import pydevd
+#pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
 
 # Modules XBMC
 import xbmc
@@ -31,7 +32,6 @@ sys.path.append(__data__)
 
 from Media import *
 media = Media()
-
 
 ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
@@ -79,10 +79,10 @@ class CapturePlayer(xbmc.Player):
         menu.append(__language__(32022))
         off = len(menu)-2
         on = len(menu)-1
-        quit = False
+        mquit = False
         time.sleep(1)
         selected = xbmcgui.Dialog().select(__language__(32020), menu)
-        while not quit:
+        while not mquit:
             if selected != -1:
                 ambibox.lock()
                 if (off == int(selected)):
@@ -93,7 +93,7 @@ class CapturePlayer(xbmc.Player):
                     ambibox.turnOn()
                     self.setProfile('true', menu[selected])
                 ambibox.unlock()
-            quit = True
+            mquit = True
 
     def onPlayBackStarted(self):
         __settings = xbmcaddon.Addon("script.ambibox")
@@ -206,7 +206,7 @@ class XBMCDirect (threading.Thread):
         tar = capture.getAspectRatio()
         if (width != 0 and height != 0 and ratio != 0):
             inimap = []
-            inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            self.player.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
             # get one frame to get length
             aax = 0
             while not self.player.isPlayingVideo():
@@ -251,20 +251,30 @@ class XBMCDirect (threading.Thread):
                 inimapstr = "".join(inimap)
                 notification(__language__(32034))
 
-                #capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+                capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
 
                 while self.player.isPlayingVideo():
                     capture.waitForCaptureStateChangeEvent(1000)
                     if capture.getCaptureState() == xbmc.CAPTURE_STATE_DONE:
-                        inDataMap.seek(0)
-                        seeked = inDataMap.read_byte()
+                        image = capture.getImage()
+                        newlen = len(image)
+                        self.player.inDataMap.seek(0)
+                        seeked = self.player.inDataMap.read_byte()
                         if ord(seeked) == 248:  #check that XBMC Direct is running
-                            inDataMap[1:10] = inimapstr[1:10]
-                            inDataMap[11:(11+length)] = str(image)
+                            if newlen != length:
+                                length = newlen
+                                inimapnew = inimap[0:6]
+                                inimapnew.append(chr(length & 0xff))
+                                inimapnew.append(chr((length >> 8) & 0xff))
+                                inimapnew.append(chr((length >> 16) & 0xff))
+                                inimapnew.append(chr((length >> 24) & 0xff))
+                                inimapstr = "".join(inimapnew)
+                            self.player.inDataMap[1:10] = inimapstr[1:10]
+                            self.player.inDataMap[11:(11 + length)] = str(image)
                             # write first byte to indicate we finished writing the data
-                            inDataMap[0] = (chr(240))
-                inDataMap.close()
-                inDataMap = None
+                            self.player.inDataMap[0] = (chr(240))
+                self.player.inDataMap.close()
+                self.player.inDataMap = None
             else:
                 info('Capture failed')
                 notification(__language__(32035))
@@ -303,7 +313,7 @@ def GetProfileName(pfls, DisplayAspectRatio, vidfmt):
                 strfmt = apfl.find('Format').text
             except:
                 strfmt = "Normal"
-            if strfmt != "SBS" and strfmt <> "TAB":
+            if strfmt != "SBS" and strfmt != "TAB":
                 strfmt = "Normal"
 
             ll = float(strll)
