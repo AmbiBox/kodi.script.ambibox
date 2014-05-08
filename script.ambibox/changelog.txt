@@ -25,3 +25,7 @@ Removed 3D settings from settings screen and implemented them in dardata.xml
 0.0.10
 
 Changed xbmc capture to a separate thread and implemented checking for successful capture
+
+0.0.11
+
+Bug Fix
