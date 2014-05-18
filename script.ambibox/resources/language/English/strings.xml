@@ -32,6 +32,8 @@
   <string id="32022">Backlight on</string>
   <string id="32023">Show menu when playing</string>
   <string id="32024">Do not show menu when playing</string>
+  <string id="32050">Disable on screensaver</string>
+  <string id="32051">Last profile</string>
 
   <!-- Notification -->
   <string id="32030">Connected to AmbiBox</string>
