@@ -16,7 +16,7 @@
   <string id="32014">Default video profile</string>
   <string id="32015">Enable audio profile</string>
   <string id="32016">Audio profile</string>
-  <string id="32017">Enable DirectXBMC capture</string>
+  <string id="32017">Enable XBMCDirect capture</string>
   <string id="32018">Use Auto Aspect Ratio switching</string>
   <string id="32019">On video playback:</string>
 
@@ -28,7 +28,7 @@
 
   <!-- menu -->
   <string id="32020">Select profile</string>
-  <string id="32021">Backlight Off</string>
+  <string id="32021">Backlight off</string>
   <string id="32022">Backlight on</string>
   <string id="32023">Show menu when playing</string>
   <string id="32024">Do not show menu when playing</string>
