@@ -5,7 +5,7 @@
   <string id="32000">General</string>
   <string id="32001">API host</string>
   <string id="32002">API port</string>
-  <string id="32003">Notification</string>
+  <string id="32003">Notifications</string>
 
   <string id="32010">Profiles</string>
   <string id="32041">Screen X resolution (pixels)</string>
@@ -13,10 +13,10 @@
   <string id="32011">Enable default profile</string>
   <string id="32012">Default profile</string>
   <string id="32013">Enable video profile</string>
-  <string id="32014">Default Video profile</string>
+  <string id="32014">Default video profile</string>
   <string id="32015">Enable audio profile</string>
   <string id="32016">Audio profile</string>
-  <string id="32017">Using DirectXBMC capture</string>
+  <string id="32017">Enable DirectXBMC capture</string>
   <string id="32018">Use Auto Aspect Ratio switching</string>
   <string id="32019">On video playback:</string>
 
