@@ -29,3 +29,7 @@ Changed xbmc capture to a separate thread and implemented checking for successfu
 0.0.11
 
 Bug Fix
+
+0.0.12
+
+Added disable on screensaver - @Joshua
