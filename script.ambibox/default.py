@@ -63,6 +63,9 @@ class CapturePlayer(xbmc.Player):
         self.reSBS = re.compile("[-. _]h?sbs[-. _]", re.IGNORECASE)
 
     def setProfile(self, enable, profile):
+        __settings = xbmcaddon.Addon("script.ambibox")
+        __settings.setSetting("last_profile", profile)
+
         ambibox.lock()
         if enable == 'true':
             notification(__language__(32033) % profile)
@@ -110,7 +113,7 @@ class CapturePlayer(xbmc.Player):
             infos[3] = float(infos[0])/float(infos[1])
 
         if self.isPlayingAudio():
-                self.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
+            self.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
         if self.isPlayingVideo():
             m = self.re3D.search(xxx)
@@ -174,6 +177,30 @@ class CapturePlayer(xbmc.Player):
         ambibox.unlock()
         ambibox.disconnect()
         __settings = None
+
+class XbmcMonitor(xbmc.Monitor):
+    def __init__(self, *args, **kwargs):
+        xbmc.Monitor.__init__(self)
+
+    def onScreensaverDeactivated(self):
+        self.setScreensaver(False)
+
+    def onScreensaverActivated(self):
+        self.setScreensaver(True)
+
+    def setScreensaver(self, enabled):
+        __settings = xbmcaddon.Addon("script.ambibox")
+
+        ambibox.lock()
+        if __settings.getSetting("disable_on_screensaver") and enabled:
+            notification(__language__(32032))
+            ambibox.turnOff()
+        else:
+            profile = __settings.getSetting("last_profile")
+            notification(__language__(32033) % profile)
+            ambibox.turnOn()
+            ambibox.setProfile(profile)
+        ambibox.unlock()
 
 
 class XBMCDirect (threading.Thread):
@@ -337,9 +364,11 @@ def main():
     if ambibox.connect() == 0:
         notification(__language__(32030))
         player = CapturePlayer()
+        monitor = XbmcMonitor()
     else:
         notification(__language__(32031))
         player = None
+        monitor = None
 
     while not xbmc.abortRequested:
         if player is None:
@@ -347,6 +376,7 @@ def main():
             if ambibox.connect() == 0:
                 notification(__language__(32030))
                 player = CapturePlayer()
+                monitor = XbmcMonitor()
         else:
             xbmc.sleep(100)
 
@@ -355,5 +385,6 @@ def main():
         notification(__language__(32032))
         player.close()
         player = None
+        monitor = None
 
 main()
