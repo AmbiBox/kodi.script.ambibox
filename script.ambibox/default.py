@@ -7,9 +7,9 @@ import re
 import threading
 from xml.etree import ElementTree
 
-#sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
-#import pydevd
-#pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
+# sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
+# import pydevd
+# pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
 
 # Modules XBMC
 import xbmc
@@ -22,6 +22,7 @@ import AmbiBox
 __addon__ = xbmcaddon.Addon()
 __cwd__ = __addon__.getAddonInfo('path')
 __scriptname__ = __addon__.getAddonInfo('name')
+__version__ = str(__addon__.getAddonInfo('version'))
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __language__ = __settings__.getLocalizedString
 __data__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'data'))
@@ -277,6 +278,7 @@ class XBMCDirect (threading.Thread):
                 inimap.append(chr((length >> 24) & 0xff))
                 inimapstr = "".join(inimap)
                 notification(__language__(32034))
+                info('XBMCDirect capture initiated')
 
                 capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
 
@@ -363,6 +365,7 @@ def GetProfileName(pfls, DisplayAspectRatio, vidfmt):
 def main():
     if ambibox.connect() == 0:
         notification(__language__(32030))
+        info('Started - ver %s' % __version__)
         player = CapturePlayer()
         monitor = XbmcMonitor()
     else:
@@ -375,6 +378,7 @@ def main():
             xbmc.sleep(1000)
             if ambibox.connect() == 0:
                 notification(__language__(32030))
+                info('Started - ver %s' % __version__)
                 player = CapturePlayer()
                 monitor = XbmcMonitor()
         else:
