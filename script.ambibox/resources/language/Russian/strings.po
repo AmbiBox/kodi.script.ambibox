@@ -1,0 +1,209 @@
+# XBMC Media Center language file
+# Addon Name: AmbiBox
+# Addon id: script.ambibox
+# Addon Provider: AmbiBox
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ru\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#Add-on messages id=32001 to 32061
+msgctxt "#32001"
+msgid "Основные"
+msgstr ""
+
+msgctxt "#32002"
+msgid "IP-адрес API"
+msgstr ""
+
+msgctxt "#32003"
+msgid "Порт API"
+msgstr ""
+
+msgctxt "#32004"
+msgid "Уведомления"
+msgstr ""
+
+msgctxt "#32005"
+msgid "Обновить профили из AmbiBox (требуется выход на аддоны / Услуги)"
+msgstr ""
+
+msgctxt "#32006"
+msgid "Нет профили, настроенные в Ambibox"
+msgstr ""
+
+msgctxt "#32007"
+msgid "Установка AmbiBox не найден: выход сценарий"
+msgstr ""
+
+msgctxt "#32008"
+msgid "Ambibox не может быть запущен"
+msgstr ""
+
+msgctxt "#32010"
+msgid "Профили"
+msgstr ""
+
+msgctxt "#32041"
+msgid "Разрешение экрана по X (пикселей)"
+msgstr ""
+
+msgctxt "#32042"
+msgid "Разрешение экрана по Y (пикселей)"
+msgstr ""
+
+msgctxt "#32011"
+msgid "Включать профиль по умолчанию"
+msgstr ""
+
+msgctxt "#32012"
+msgid "Профиль по умолчанию"
+msgstr ""
+
+msgctxt "#32013"
+msgid "Включать для видео"
+msgstr ""
+
+msgctxt "#32014"
+msgid "Профиль для видео по умолчанию"
+msgstr ""
+
+msgctxt "#32015"
+msgid "Включать для аудио"
+msgstr ""
+
+msgctxt "#32016"
+msgid "Профиль для аудио"
+msgstr ""
+
+msgctxt "#32017"
+msgid "Использовать DirectXBMC захват "
+msgstr ""
+
+msgctxt "#32018"
+msgid "Используйте автоматическое переключение формата изображения "
+msgstr ""
+
+msgctxt "#32019"
+msgid "Воспроизведение видео: "
+msgstr ""
+
+msgctxt "#32025"
+msgid "  Выберите -&gt;"
+msgstr ""
+
+msgctxt "#32026"
+msgid "Используйте профиля видео по умолчанию"
+msgstr ""
+
+msgctxt "#32027"
+msgid "Автоматический переключатель на основе AR"
+msgstr ""
+
+msgctxt "#32028"
+msgid "Показать меню профилей "
+msgstr ""
+
+msgctxt "#32029"
+msgid "выключать LEDs"
+msgstr ""
+
+msgctxt "#32020"
+msgid "Выберите профиль"
+msgstr ""
+
+msgctxt "#32021"
+msgid "Выключить подсветку"
+msgstr ""
+
+msgctxt "#32022"
+msgid "Включить подсветку"
+msgstr ""
+
+msgctxt "#32023"
+msgid "Показать меню при воспроизведении"
+msgstr ""
+
+msgctxt "#32024"
+msgid "Не показывать меню при воспроизведении"
+msgstr ""
+
+msgctxt "#32050"
+msgid "Отключить заставку"
+msgstr ""
+
+msgctxt "#32051"
+msgid "Последний профиль"
+msgstr ""
+
+msgctxt "#32052"
+msgid "Включить 3D профили"
+msgstr ""
+
+msgctxt "#32053"
+msgid "2D профилей Соотношение сторон"
+msgstr ""
+
+msgctxt "#32054"
+msgid "4:3 (SD)"
+msgstr ""
+
+msgctxt "#32055"
+msgid "3:2"
+msgstr ""
+
+msgctxt "#32056"
+msgid "16:9 (HD)"
+msgstr ""
+
+msgctxt "#32057"
+msgid "1.85:1"
+msgstr ""
+
+msgctxt "#32058"
+msgid "2.2:1"
+msgstr ""
+
+msgctxt "#32059"
+msgid "2.4:1"
+msgstr ""
+
+msgctxt "#32060"
+msgid "3D Соотношение сторон Профили для hSBS"
+msgstr ""
+
+msgctxt "#32061"
+msgid "3D Соотношение сторон Профили для hTAB(hOU)"
+msgstr ""
+
+msgctxt "#32030"
+msgid "Подключение к AmbiBox"
+msgstr ""
+
+msgctxt "#32031"
+msgid "Ошибка подключения к AmbiBox"
+msgstr ""
+
+msgctxt "#32032"
+msgid "Ambibox выключен"
+msgstr ""
+
+msgctxt "#32033"
+msgid "Установлен профиль %s"
+msgstr ""
+
+msgctxt "#32034"
+msgid "DirectXBMC успешно"
+msgstr ""
+
+msgctxt "#32035"
+msgid "DirectXBMC ошибка"
+msgstr ""
+
+

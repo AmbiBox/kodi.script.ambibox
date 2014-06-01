@@ -1,31 +1,50 @@
-﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<!DOCTYPE window PUBLIC "http://www.w3.org/2001/XMLSchema" "http://xbmc.org/xbmc.xsd">
 <settings>
-  <!-- General -->
-  <category label="32000">
-    <setting id="host" type="text" label="32001"  default="127.0.0.1" /> 
-    <setting id="port" type="number" label="32002" default="3636" /> 
-	  <setting id="notification" type="bool" label="32003" default="true" /> 
-    <setting id="screen_x" type="number" label="32041"  default="1920" /> 
-    <setting id="screen_y" type="number" label="32042"  default="1080" /> 
+  
+  <category label="32001">
+    <setting default="127.0.0.1" id="host" label="32002" type="text" />
+    <setting default="3636" id="port" label="32003" type="number" />
+	<setting default="true" id="notification" label="32004" type="bool" />
+    <setting action="RunScript($CWD\Update.py)" label="32005" option="close" type="action" />
   </category>
   
   <category label="32010">
-    <setting id="default_enable" type="bool" label="32011"  default="true" /> 
-    <setting id="default_profile" type="text" label="32012" default="default" subsetting="true" visible="eq(-1,true)" /> 
-    <setting id="audio_enable" type="bool" label="32015" default="true" />
-    <setting id="audio_profile" type="text" label="32016" default="default" subsetting="true" visible="eq(-1,true)"   />
-    <setting id="text" type = "lsep" label="32019" />
-    <setting id="video_choice" type ="enum" label="32025" lvalues="32026|32027|32028|32029" default="2" />
-    <setting id="video_profile" type="text" label="32014" default="default" subsetting="true" enable="eq(-1,0)"  />
-    <setting id="directXBMC_enable" type="bool" label="32017" default="true" subsetting="true" enable="!eq(-2,3)" />
-    <setting id="disable_on_screensaver" type="bool" label="32050" value="true" default="true" />
-    <setting id="last_profile" type="text" label="32051" value="true" default="default" visible="false" />
-    <setting id="show_menu" type="bool" label="32023" value="true" default="true" visible="false" />
+    <setting default="true" id="default_enable" label="32011" type="bool" /> 
+    <setting default="Default" id="default_profile" label="32012" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="eq(-1,true)" />
+    <setting default="true" id="audio_enable" label="32015" type="bool" />
+    <setting default="Default" id="audio_profile" label="32016" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="eq(-1,true)" />
+    <setting id="text" label="32019" type="lsep" />
+    <setting default="2" id="video_choice" label="32025" lvalues="32026|32027|32028|32029" type="enum" />
+    <setting default="Default" enable="eq(-1,0)" id="video_profile" label="32014" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="true" enable="!eq(-2,3)" id="directXBMC_enable" label="32017" subsetting="true" type="bool" />
+    <setting default="true" id="disable_on_screensaver" label="32050" type="bool" value="true" />
+    <setting default="default" id="last_profile" label="32051" type="text" value="true" visible="false" />
+    <setting default="true" id="show_menu" label="32023" type="bool" value="true" visible="false" />
+ </category>
 
+ <category label="32053">
+    <setting default="Default" id="2D_43" label="32054" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="true" />
+    <setting default="Default" id="2D_32" label="32055" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="true" />
+    <setting default="Default" id="2D_169" label="32056" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="true" />
+    <setting default="Default" id="2D_185" label="32057" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="true" />
+    <setting default="Default" id="2D_22" label="32058" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="true" />
+    <setting default="Default" id="2D_24" label="32059" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" visible="true" />
 
  </category>
-<!--   <category label="32020">
-    <setting id="show_menu" type="number" label="32023" value="1" default="1" />
-  </category> -->
+ <category label="32060">
+    <setting default="false" id="3D_enable" label="32052" type="bool" value="false" />
+    <setting label="32060" type="lsep" />
+    <setting default="Default" enable="eq(-2,true)" id="3DS_43" label="32054" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-3,true)" id="3DS_32" label="32055" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-4,true)" id="3DS_169" label="32056" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-5,true)" id="3DS_185" label="32057" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-6,true)" id="3DS_22" label="32058" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-7,true)" id="3DS_24" label="32059" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting label="32061" type="lsep" />
+    <setting default="Default" enable="eq(-9,true)" id="3DT_43" label="32054" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-10,true)" id="3DT_32" label="32055" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-11,true)" id="3DT_169" label="32056" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-12,true)" id="3DT_185" label="32057" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-13,true)" id="3DT_22" label="32058" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+    <setting default="Default" enable="eq(-14,true)" id="3DT_24" label="32059" subsetting="true" type="labelenum" values="None|Default|XBMC|2.20:1|4:3|ColorMusic|2.4:1|2.35:1|XBMCDirect" />
+</category>
 </settings>
