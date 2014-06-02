@@ -13,195 +13,194 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#Add-on messages id=32001 to 32061
-
-msgctxt "#32001"
+msgctxt "#32001" #Setting
 msgid "General"
 msgstr ""
 
-msgctxt "#32002"
+msgctxt "#32002" #Setting
 msgid "API host"
 msgstr ""
 
-msgctxt "#32003"
+msgctxt "#32003" #Setting
 msgid "API port"
 msgstr ""
 
-msgctxt "#32004"
+msgctxt "#32004" #Setting
 msgid "Notifications"
 msgstr ""
 
-msgctxt "#32005"
+msgctxt "#32005" #Setting
 msgid "Refresh profiles from AmbiBox (requires exit to AddOns/Services)"
 msgstr ""
 
-msgctxt "#32006"
+msgctxt "#32006" #Notification
 msgid "No profiles configured in Ambibox"
 msgstr ""
 
-msgctxt "#32007"
+msgctxt "#32007" #Notification
 msgid "AmbiBox installation not found: exiting script"
 msgstr ""
 
-msgctxt "#32008"
+msgctxt "#32008" #Notification
 msgid "Ambibox could not be started"
 msgstr ""
 
-msgctxt "#32010"
+msgctxt "#32010" #Setting
 msgid "Profiles"
 msgstr ""
 
-msgctxt "#32041"
+msgctxt "#32041" #Setting
 msgid "Screen X resolution (pixels)"
 msgstr ""
 
-msgctxt "#32042"
+msgctxt "#32042" #Setting
 msgid "Screen Y resolution (pixels)"
 msgstr ""
 
-msgctxt "#32011"
+msgctxt "#32011" #Setting
 msgid "Enable default profile"
 msgstr ""
 
-msgctxt "#32012"
+msgctxt "#32012" #Setting
 msgid "Default profile"
 msgstr ""
-msgctxt "#32013"
+
+msgctxt "#32013" #Setting
 msgid "Enable video profile"
 msgstr ""
 
-msgctxt "#32014"
+msgctxt "#32014" #Setting
 msgid "Default video profile"
 msgstr ""
 
-msgctxt "#32015"
+msgctxt "#32015" #Setting
 msgid "Enable audio profile"
 msgstr ""
 
-msgctxt "#32016"
+msgctxt "#32016" #Setting
 msgid "Audio profile"
 msgstr ""
 
-msgctxt "#32017"
+msgctxt "#32017" #Setting
 msgid "Enable XBMCDirect capture"
 msgstr ""
 
-msgctxt "#32018"
+msgctxt "#32018" #Setting
 msgid "Use Auto Aspect Ratio switching"
 msgstr ""
 
-msgctxt "#32019"
+msgctxt "#32019" #Setting
 msgid "On video playback:"
 msgstr ""
 
-msgctxt "#32025"
+msgctxt "#32025" #Setting
 msgid "Choose -"
 msgstr ""
 
-msgctxt "#32026"
+msgctxt "#32026" #Setting
 msgid "Use default video profile"
 msgstr ""
 
-msgctxt "#32027"
+msgctxt "#32027" #Setting
 msgid "Auto switch based on AR"
 msgstr ""
 
-msgctxt "#32028"
+msgctxt "#32028" #Setting
 msgid "Show menu of profiles"
 msgstr ""
 
-msgctxt "#32029"
+msgctxt "#32029" #Setting
 msgid "Turn off LEDs"
 msgstr ""
 
-msgctxt "#32020"
+msgctxt "#32020" #Setting
 msgid "Select profile"
 msgstr ""
 
-msgctxt "#32021"
+msgctxt "#32021" #Menu
 msgid "Backlight off"
 msgstr ""
 
-msgctxt "#32022"
+msgctxt "#32022" #Menu
 msgid "Backlight on"
 msgstr ""
 
-msgctxt "#32023"
+msgctxt "#32023" #Setting
 msgid "Show menu when playing"
 msgstr ""
 
-msgctxt "#32024"
+msgctxt "#32024" #Menu
 msgid "Do not show menu when playing"
 msgstr ""
 
-msgctxt "#32050"
+msgctxt "#32050" #Setting
 msgid "Disable on screensaver"
 msgstr ""
 
-msgctxt "#32051"
+msgctxt "#32051" #Setting
 msgid "Last profile"
 msgstr ""
 
-msgctxt "#32052"
+msgctxt "#32052" #Setting
 msgid "Enable 3D profiles"
 msgstr ""
 
-msgctxt "#32053"
+msgctxt "#32053" #Setting
 msgid "2D Aspect ratio profiles"
 msgstr ""
 
-msgctxt "#32054"
+msgctxt "#32054" #Setting
 msgid "4:3 (SD)"
 msgstr ""
 
-msgctxt "#32055"
+msgctxt "#32055" #Setting
 msgid "3:2"
 msgstr ""
 
-msgctxt "#32056"
+msgctxt "#32056" #Setting
 msgid "16:9 (HD)"
 msgstr ""
 
-msgctxt "#32057"
+msgctxt "#32057" #Setting
 msgid "1.85:1"
 msgstr ""
 
-msgctxt "#32058"
+msgctxt "#32058" #Setting
 msgid "2.2:1"
 msgstr ""
 
-msgctxt "#32059"
+msgctxt "#32059" #Setting
 msgid "2.4:1"
 msgstr ""
 
-msgctxt "#32060"
+msgctxt "#32060" #Setting
 msgid "3D Aspect Ratio Profiles for hSBS"
 msgstr ""
 
-msgctxt "#32061"
+msgctxt "#32061" #Setting
 msgid "3D Aspect Ratio Profiles for hTAB(hOU)"
 msgstr ""
 
-msgctxt "#32030"
+msgctxt "#32030" #Notification
 msgid "Connected to AmbiBox"
 msgstr ""
 
-msgctxt "#32031"
+msgctxt "#32031" #Notification
 msgid "Failed to connect to AmbiBox"
 msgstr ""
 
-msgctxt "#32032"
+msgctxt "#32032" #Notification
 msgid "Ambibox turned off"
 msgstr ""
 
-msgctxt "#32033"
+msgctxt "#32033" #Notification
 msgid "Set profile %s"
 msgstr ""
 
-msgctxt "#32034"
+msgctxt "#32034" #Notification
 msgid "XBMCDirect Success"
 msgstr ""
 
-msgctxt "#32035"
+msgctxt "#32035" #Notification
 msgid "XBMCDirect Fail"
 msgstr ""

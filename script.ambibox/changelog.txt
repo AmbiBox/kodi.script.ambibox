@@ -42,7 +42,7 @@ Also refreshes profiles in settings on startup
 Added increased ability to sense 4:3 and 16:9 for LiveTV
 Switched from strings.xml to strings.po
 Added check for AmbiBox being installed
-Added check for AmbiBox running and start it if it is not
+Added check for AmbiBox running and start it if it is not, close it at XBMC shutdown
 Added check that profiles in settings are in Ambibox and if not set them to None
 
 

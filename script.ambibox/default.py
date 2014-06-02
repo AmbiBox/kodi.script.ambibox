@@ -31,9 +31,9 @@ user32 = ctypes.windll.user32
 screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
 
-sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
-import pydevd
-pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
+#sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
+#import pydevd
+#pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
 
 # Modules XBMC
 import xbmc
@@ -84,8 +84,26 @@ class ProfileManager():
     def __init__(self):
         self.AmbiboxRunning = False
         self.currentProfile = ""
+        self._ABP = None
 
-    def chkAmibiboxInstalled(self):
+    @property
+    def ABP(self):
+        return self._ABP
+
+    @ABP.setter
+    def ABP(self, popobject):
+        self._ABP = popobject
+
+    @ABP.getter
+    def ABP(self):
+        return self._ABP
+
+    @ABP.deleter
+    def ABP(self):
+        del self._ABP
+
+    @staticmethod
+    def chkAmibiboxInstalled():
         #returns number of profiles if installed, 0 if installed with no profiles, -1 not installed
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         try:
@@ -121,7 +139,9 @@ class ProfileManager():
         except WindowsError:
             return False
         try:
-            pid = subprocess.Popen([ambiboxpath]).pid
+            popobj = subprocess.Popen([ambiboxpath])
+            self.ABP = popobj
+            pid = popobj.pid
         except WindowsError:
             return False
         else:
@@ -130,7 +150,8 @@ class ProfileManager():
             else:
                 return False
 
-    def chkProfileSettings(self):
+    @staticmethod
+    def chkProfileSettings():
         __settings = xbmcaddon.Addon("script.ambibox")
         pfls = ambibox.getProfiles()
         sets2chk = ['default_profile', 'audio_profile', 'video_profile']
@@ -164,7 +185,8 @@ class ProfileManager():
         self.updateprofilesettings()
         self.chkProfileSettings()
 
-    def updateprofilesettings(self):
+    @staticmethod
+    def updateprofilesettings():
         # updates choices (values="..") in settings.xml with profiles present in Ambibox program
         pstrl = []
         if ambibox.connect() == 0:
@@ -190,7 +212,8 @@ class ProfileManager():
             doc.write(__settingsdir__ + "\\settings.xml")
             xbmc.executebuiltin('UpdateLocalAddons')
 
-    def getARProfiles(self):
+    @staticmethod
+    def getARProfiles():
         # Returns 3 tuples with profiles for 2D, 3DSBS and 3DTAB
         # [0] is name, [1] is the AR, [2] is the lower limit, [3] is the upper limit
         # limits are calculated as the midway point between adjacent profiles
@@ -343,7 +366,8 @@ class ProfileManager():
             self.setProfile('true', pname)
         return ret
 
-    def GetProfileName(self, pfls, DisplayAspectRatio, vidfmt, ARProfiles):
+    @staticmethod
+    def GetProfileName(pfls, DisplayAspectRatio, vidfmt, ARProfiles):
         # Retrieves the profile name based upon the AR and video format
         ret = ""
         if vidfmt == 'Normal':
@@ -372,6 +396,16 @@ class ProfileManager():
             info("No profiles have been set up for this video type - using default")
             return __settings__.getSetting("default_profile")
 
+    def close(self):
+        try:
+            popobj = self.ABP
+            if popobj is not None:
+                popobj.terminate()
+                del popobj
+            del self.ABP
+        except:
+            pass
+
 
 class CapturePlayer(xbmc.Player):
 
@@ -382,7 +416,8 @@ class CapturePlayer(xbmc.Player):
         self.reTAB = re.compile("[-. _]h?tab[-. _]", re.IGNORECASE)
         self.reSBS = re.compile("[-. _]h?sbs[-. _]", re.IGNORECASE)
 
-    def showmenu(self):
+    @staticmethod
+    def showmenu():
         menu = ambibox.getProfiles()
         menu.append(__language__(32021))
         menu.append(__language__(32022))
@@ -489,7 +524,6 @@ class CapturePlayer(xbmc.Player):
         ambibox.turnOff()
         ambibox.unlock()
         ambibox.disconnect()
-        __settings = None
 
 
 class XbmcMonitor(xbmc.Monitor):
@@ -553,7 +587,7 @@ class XBMCDirect (threading.Thread):
             inimap = []
             self.player.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
             # get one frame to get length
-            aax = 0
+            aax = None
             while not self.player.isPlayingVideo():
                 xbmc.sleep(100)
                 continue
@@ -561,7 +595,6 @@ class XBMCDirect (threading.Thread):
                 xbmc.sleep(100)
                 capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
                 capture.waitForCaptureStateChangeEvent(1000)
-                aax = 0
                 aax = capture.getCaptureState()
                 if aax == xbmc.CAPTURE_STATE_FAILED:
                     capture = None
@@ -627,7 +660,6 @@ class XBMCDirect (threading.Thread):
         else:
             info("Error retrieving video file dimensions")
 
-pm = ProfileManager()
 
 def main():
 
@@ -653,11 +685,14 @@ def main():
         else:
             xbmc.sleep(100)
 
+    pm.close()
+
     if player is not None:
         # set off
         notification(__language__(32032))
         player.close()
-        player = None
-        monitor = None
+        del player
+        del monitor
 
+pm = ProfileManager()
 main()
