@@ -637,6 +637,8 @@ def main():
             if ambibox.connect() == 0:
                 notification(__language__(32030))
                 info('Started - ver %s' % __version__)
+                pm.updateprofilesettings()
+                pm.chkProfileSettings()
                 player = CapturePlayer()
                 monitor = XbmcMonitor()
         else:
