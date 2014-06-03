@@ -4,6 +4,7 @@
     <setting default="127.0.0.1" id="host" label="32002" type="text" />
     <setting default="3636" id="port" label="32003" type="number" />
 	<setting default="true" id="notification" label="32004" type="bool" />
+    <setting default="false" id="start_ambibox" label="32009" type="bool" />
     <setting action="RunScript($CWD\Update.py)" label="32005" option="close" type="action" />
   </category>
   

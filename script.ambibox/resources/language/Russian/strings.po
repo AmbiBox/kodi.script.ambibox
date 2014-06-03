@@ -46,6 +46,10 @@ msgctxt "#32008"
 msgid "Ambibox не может быть запущен"
 msgstr ""
 
+msgctxt "#32009" #Notification
+msgid "Начните Ambibox с XBMC, если не работает"
+msgstr ""
+
 msgctxt "#32010"
 msgid "Профили"
 msgstr ""
@@ -206,4 +210,6 @@ msgctxt "#32035"
 msgid "DirectXBMC ошибка"
 msgstr ""
 
-
+msgctxt "#32036"
+msgid "Настройки обновляется из профилей Ambibox"
+msgstr ""

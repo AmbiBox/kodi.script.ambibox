@@ -45,6 +45,10 @@ msgctxt "#32008" #Notification
 msgid "Ambibox could not be started"
 msgstr ""
 
+msgctxt "#32009" #Notification
+msgid "Start Ambibox with XBMC if not running"
+msgstr ""
+
 msgctxt "#32010" #Setting
 msgid "Profiles"
 msgstr ""
@@ -203,4 +207,8 @@ msgstr ""
 
 msgctxt "#32035" #Notification
 msgid "XBMCDirect Fail"
+msgstr ""
+
+msgctxt "#32036" #Notification
+msgid "Settings refreshed from Ambibox profiles"
 msgstr ""

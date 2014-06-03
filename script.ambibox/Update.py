@@ -30,6 +30,7 @@ __addon__ = xbmcaddon.Addon("script.ambibox")
 __cwd__ = __addon__.getAddonInfo('path')
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 __settings__ = xbmcaddon.Addon("script.ambibox")
+__language__ = __settings__.getLocalizedString
 __scriptname__ = __addon__.getAddonInfo('name')
 
 sys.path.append(__resource__)
@@ -40,6 +41,7 @@ ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getS
 def info(msg):
     xbmc.log("### [%s] - %s" % (__scriptname__, msg,), level=xbmc.LOGNOTICE)
 
+
 def notification(text):
     text = text.encode('utf-8')
     info(text)
@@ -49,21 +51,18 @@ def notification(text):
         xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
 
 
-
 def updateprofilesettings():
     pstrl = []
     if ambibox.connect() == 0:
         pfls = ambibox.getProfiles()
-        i = 1
-        firstpfl = ""
+        defpfl = "None"
         pstrl.append('None')
         pstrl.append('|')
         for pfl in pfls:
             pstrl.append(str(pfl))
             pstrl.append('|')
-            if i == 1:
-                firstpfl = str(pfl)
-            i += 1
+            if str(pfl).lower() == 'default':
+                defpfl = str(pfl)
         del pstrl[-1]
         pstr = "".join(pstrl)
         doc = ElementTree.parse(__settingsdir__ + "\\settings.xml")
@@ -71,31 +70,35 @@ def updateprofilesettings():
         fixg = doc.iterfind(repl)
         for fixe in fixg:
             fixe.set('values', pstr)
-            fixe.set('default', firstpfl)
+            fixe.set('default', defpfl)
         doc.write(__settingsdir__ + "\\settings.xml")
+        info('Settings refreshed from Ambibox Profiles')
+        notification(__language__(32036))
+    else:
+        notification(__language__(32031))
+
 
 def chkProfileSettings():
-    __settings = xbmcaddon.Addon("script.ambibox")
-    pfls = ambibox.getProfiles()
-    sets2chk = ['default_profile', 'audio_profile', 'video_profile']
-    vidfmts = ['2D', '3DS', '3DT']
-    ars = ['43', '32', '169', '185', '22', '24']
-    for vidfmt in vidfmts:
-        for ar in ars:
-            setn = vidfmt + '_' + ar
-            sets2chk.append(setn)
-    for setn in sets2chk:
-        pname = __settings.getSetting(setn)
-        if pname != 'None':
-            if not(pname in pfls):
-                __settings.setSetting(setn, 'None')
+    if ambibox.connect() == 0:
+        __settings = xbmcaddon.Addon("script.ambibox")
+        pfls = ambibox.getProfiles()
+        sets2chk = ['default_profile', 'audio_profile', 'video_profile']
+        vidfmts = ['2D', '3DS', '3DT']
+        ars = ['43', '32', '169', '185', '22', '24']
+        for vidfmt in vidfmts:
+            for ar in ars:
+                setn = vidfmt + '_' + ar
+                sets2chk.append(setn)
+        for setn in sets2chk:
+            pname = __settings.getSetting(setn)
+            if pname != 'None':
+                if not(pname in pfls):
+                    __settings.setSetting(setn, 'None')
+
 
 def main():
     updateprofilesettings()
     chkProfileSettings()
     xbmc.executebuiltin('UpdateLocalAddons')
-    info('Settings refreshed from Ambibox Profiles')
-    notification('Settings refreshed from Ambibox Profiles')
-
 
 main()

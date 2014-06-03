@@ -26,14 +26,23 @@ import threading
 from _winreg import *
 import subprocess
 from xml.etree import ElementTree
+from operator import itemgetter
 import ctypes
 user32 = ctypes.windll.user32
 screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
 
-#sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
-#import pydevd
-#pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
+debug = False
+remote = False
+if debug:
+    if remote:
+        sys.path.append(r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\pycharm-debug.py3k\\')
+        import pydevd
+        pydevd.settrace('192.168.1.103', port=51234, stdoutToServer=True, stderrToServer=True)
+    else:
+        sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
+        import pydevd
+        pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
 
 # Modules XBMC
 import xbmc
@@ -56,7 +65,6 @@ __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 sys.path.append(__resource__)
 sys.path.append(__data__)
 import psutil
-
 from Media import *
 media = Media()
 
@@ -120,14 +128,22 @@ class ProfileManager():
     def chkAmbiboxRunning(self):
         # uses psutil to check processes
         self.AmbiboxRunning = False
-        for p in psutil.get_process_list():
+        i = 0
+        procs = []
+        for p in psutil.process_iter():
             try:
                 if p.name() is not None:
                     pn = p.name()
+                    procs.append(pn)
                     if pn == "AmbiBox.exe":
                         self.AmbiboxRunning = True
-            except:
+            except Exception, e:
+                #psutil throws an 'AccessDenied' error for process names unavailable to the user
+                #that exception type is unavailable in python
                 pass
+            finally:
+                i += 1
+            procs = sorted(procs)
         return self.AmbiboxRunning
 
     def startAmbibox(self):
@@ -153,23 +169,32 @@ class ProfileManager():
     @staticmethod
     def chkProfileSettings():
         __settings = xbmcaddon.Addon("script.ambibox")
-        pfls = ambibox.getProfiles()
-        sets2chk = ['default_profile', 'audio_profile', 'video_profile']
-        vidfmts = ['2D', '3DS', '3DT']
-        ars = ['43', '32', '169', '185', '22', '24']
-        for vidfmt in vidfmts:
-            for ar in ars:
-                setn = vidfmt + '_' + ar
-                sets2chk.append(setn)
-        for setn in sets2chk:
-            pname = __settings.getSetting(setn)
-            if pname != 'None':
-                if not(pname in pfls):
-                    __settings.setSetting(setn, 'None')
-                    info('Missing profile %s set to None' % setn)
+        if ambibox.connection == 0:
+            pfls = ambibox.getProfiles()
+            sets2chk = ['default_profile', 'audio_profile', 'video_profile']
+            vidfmts = ['2D', '3DS', '3DT']
+            ars = ['43', '32', '169', '185', '22', '24']
+            for vidfmt in vidfmts:
+                for ar in ars:
+                    setn = vidfmt + '_' + ar
+                    sets2chk.append(setn)
+            for setn in sets2chk:
+                pname = __settings.getSetting(setn)
+                if pname != 'None':
+                    if not(pname in pfls):
+                        __settings.setSetting(setn, 'None')
+                        info('Missing profile %s set to None' % setn)
 
     def start(self):
         pcnt = self.chkAmibiboxInstalled()
+        if (pcnt >= 0) and (__settings__.getSetting('start_ambibox')) is True:
+            success = self.startAmbibox()
+            if success:
+                self.AmbiboxRunning = True
+            else:
+                self.AmbiboxRunning = False
+                notification(__language__('32008'))
+                info('Could not start AmbiBox executable')
         if pcnt == 0:
             notification(__language__('32006'))
             info('No profiles found in Ambibox')
@@ -177,13 +202,10 @@ class ProfileManager():
             notification(__language__('32007'))
             info('Ambibox installation not found: terminating script')
             exit()
-        if pcnt >= 0 and self.chkAmbiboxRunning() is False:
-            success = self.startAmbibox()
-            if not success:
-                notification(__language__('32008'))
-                info('Could not start AmbiBox executable')
-        self.updateprofilesettings()
-        self.chkProfileSettings()
+        else:
+            if self.AmbiboxRunning:
+                self.updateprofilesettings()
+                self.chkProfileSettings()
 
     @staticmethod
     def updateprofilesettings():
@@ -191,16 +213,14 @@ class ProfileManager():
         pstrl = []
         if ambibox.connect() == 0:
             pfls = ambibox.getProfiles()
-            i = 1
-            firstpfl = ""
+            defpfl = 'None'
             pstrl.append('None')
             pstrl.append('|')
             for pfl in pfls:
                 pstrl.append(str(pfl))
                 pstrl.append('|')
-                if i == 1:
-                    firstpfl = str(pfl)
-                i += 1
+                if str(pfl).lower() == 'default':
+                    defpfl = str(pfl)
             del pstrl[-1]
             pstr = "".join(pstrl)
             doc = ElementTree.parse(__settingsdir__ + "\\settings.xml")
@@ -208,7 +228,7 @@ class ProfileManager():
             fixg = doc.iterfind(repl)
             for fixe in fixg:
                 fixe.set('values', pstr)
-                fixe.set('default', firstpfl)
+                fixe.set('default', defpfl)
             doc.write(__settingsdir__ + "\\settings.xml")
             xbmc.executebuiltin('UpdateLocalAddons')
 
@@ -219,9 +239,6 @@ class ProfileManager():
         # limits are calculated as the midway point between adjacent profiles
 
         ARProfiles = []
-        AR2DProfiles = []
-        AR3DSProfiles = []
-        AR3DTProfiles = []
         __settings = xbmcaddon.Addon("script.ambibox")
         if ambibox.connect() == 0:
             pfls = ambibox.getProfiles()
@@ -230,113 +247,53 @@ class ProfileManager():
         setlist2D = ['2D_43', '2D_32', '2D_169', '2D_185', '2D_22', '2D_24']
         setlist3DS = ['3DS_43', '3DS_32', '3DS_169', '3DS_185', '3DS_22', '3DS_24']
         setlist3DT = ['3DT_43', '3DT_32', '3DT_169', '3DT_185', '3DT_22', '3DT_24']
-        for settingid in setlist2D:
-            profl = str(__settings.getSetting(settingid))
-            if profl != 'None':
-                spfl = settingid[len(settingid)-2:]
-                if spfl == "43":
-                    AR = 1.333
-                elif spfl == "32":
-                    AR = 1.5
-                elif spfl == "69":
-                    AR = 1.778
-                elif spfl == "85":
+        setlists = []
+        setlists.append(setlist2D)
+        setlists.append(setlist3DS)
+        setlists.append(setlist3DT)
+        for setlist in setlists:
+            tpfl = []
+            for settingid in setlist:
+                profl = str(__settings.getSetting(settingid))
+                if profl != 'None':
+                    spfl = settingid[len(settingid)-2:]
+                    if spfl == "43":
+                        AR = 1.333
+                    elif spfl == "32":
+                        AR = 1.5
+                    elif spfl == "69":
+                        AR = 1.778
+                    elif spfl == "85":
+                        AR = 1.85
+                    elif spfl == "22":
+                        AR = 2.2
+                    elif spfl == "24":
+                        AR = 2.4
+                    if profl in pfls:
+                        tpfl.append([profl, AR, AR, AR])
+                    elif not pfls:
+                        info("Profile existance not checked due to unavailability of Amibibox API")
+                    else:
+                        tpfl.append([__settings.getSetting('default'), AR, AR, AR])
+                        info("Profile in settings not a valid Ambibox profile - using default")
+            tpfl.sort(key=itemgetter(1))
+            ARProfiles.append(tpfl)
 
-                    AR = 1.85
-                elif spfl == "22":
-
-                    AR = 2.2
-                elif spfl == "24":
-
-                    AR = 2.4
-                if profl in pfls:
-                    AR2DProfiles.append([profl, AR, AR, AR])
-                elif not pfls:
-                    info("Profile existance not checked due to unavailability of Amibibox API")
+        for tpfl in ARProfiles:
+            i = 0
+            i1 = len(tpfl)
+            for pfl in tpfl:
+                if i == 0:
+                    ll = 0.1
                 else:
-                    AR2DProfiles.append([__settings.getSetting('default'), AR, AR, AR])
-                    info("Profile in settings not a valid Ambibox profile - using default")
-
-        for settingid in setlist3DS:
-            profl = __settings.getSetting(settingid)
-            if profl != 'None':
-                spfl = settingid[len(settingid)-2:]
-                if spfl == "43":
-                    AR = 1.333
-                elif spfl == "32":
-                    AR = 1.5
-                elif spfl == "69":
-                    AR = 1.778
-                elif spfl == "85":
-                    AR = 1.85
-                elif spfl == "22":
-                    AR = 2.2
-                elif spfl == "24":
-
-                    AR = 2.4
-                AR3DSProfiles.append([profl, AR, AR, AR])
-        for settingid in setlist3DT:
-            profl = __settings.getSetting(settingid)
-            if profl != 'None':
-                spfl = settingid[len(settingid)-2:]
-                if spfl == "43":
-                    AR = 1.333
-                elif spfl == "32":
-                    AR = 1.5
-                elif spfl == "69":
-                    AR = 1.778
-                elif spfl == "85":
-                    AR = 1.85
-                elif spfl == "22":
-                    AR = 2.2
-                elif spfl == "24":
-                    AR = 2.4
-                AR3DTProfiles.append([profl, AR, AR, AR])
-        i = 0
-        i1 = len(AR2DProfiles)
-        for pfl in AR2DProfiles:
-            if i == 0:
-                ll = 0.1
-            else:
-                ll = float((pfl[1] + AR2DProfiles[i-1][1])/2)
-            if i == i1-1:
-                ul = 99
-            else:
-                ul = float((pfl[1] + AR2DProfiles[i+1][1])/2)
-            pfl[2] = ll
-            pfl[3] = ul
-            i += 1
-        i = 0
-        i1 = len(AR3DSProfiles)
-        for pfl in AR3DSProfiles:
-            if i == 0:
-                ll = 0.1
-            else:
-                ll = float((pfl[1] + AR3DSProfiles[i-1][1])/2)
-            if i == i1-1:
-                ul = 99
-            else:
-                ul = float((pfl[1] + AR3DSProfiles[i+1][1])/2)
-            pfl[2] = ll
-            pfl[3] = ul
-            i += 1
-        i = 0
-        i1 = len(AR3DTProfiles)
-        for pfl in AR3DTProfiles:
-            if i == 0:
-                ll = 0.1
-            else:
-                ll = float((pfl[1] + AR3DTProfiles[i-1][1])/2)
-            if i == i1-1:
-                ul = 99
-            else:
-                ul = float((pfl[1] + AR3DTProfiles[i+1][1])/2)
-            pfl[2] = ll
-            pfl[3] = ul
-            i += 1
-        ARProfiles.append(AR2DProfiles)
-        ARProfiles.append(AR3DSProfiles)
-        ARProfiles.append(AR3DTProfiles)
+                    ll = float((pfl[1] + tpfl[i-1][1])/2)
+                if i == i1-1:
+                    ul = 99
+                else:
+                    ul = float((pfl[1] + tpfl[i+1][1])/2)
+                pfl[2] = ll
+                pfl[3] = ul
+                i += 1
         return ARProfiles
 
     def setProfile(self, enable, profile):
@@ -403,7 +360,7 @@ class ProfileManager():
                 popobj.terminate()
                 del popobj
             del self.ABP
-        except:
+        except Exception, e:
             pass
 
 
@@ -483,7 +440,7 @@ class CapturePlayer(xbmc.Player):
             videomode = __settings.getSetting("video_choice")
             try:
                 videomode = int(videomode)
-            except:
+            except (ValueError, TypeError):
                 videomode = 2
 
             if videomode == 0:    #Use Default Video Profile
