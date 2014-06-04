@@ -26,9 +26,9 @@ __cwd__ = __addon__.getAddonInfo('path')
 from ctypes import *
 if os.name == "nt" or os.name == "dos" or os.name == "os2" or os.name == "ce":
     try:
-        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'MediaInfo_i386.dll'))
+        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo_i386.dll'))
     except WindowsError:
-        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'MediaInfo.dll'))
+        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo.dll'))
     MustUseAnsi = 0
 else:
     MediaInfoDLL_Handler = CDLL(os.path.join(__cwd__, 'resources', 'lib', 'libmediainfo.so.0'))

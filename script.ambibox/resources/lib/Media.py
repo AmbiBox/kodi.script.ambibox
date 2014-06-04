@@ -1,4 +1,4 @@
-from MediaInfoDLL import MediaInfo, Stream
+from mediainfodll import MediaInfo, Stream
 
 import xbmc
 import xbmcaddon

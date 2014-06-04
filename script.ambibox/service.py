@@ -1,5 +1,5 @@
 #Modules General
-import AmbiBox
+import ambibox
 import os
 import sys
 from sys import argv
@@ -12,7 +12,7 @@ __language__ = __settings__.getLocalizedString
 #########################################################################################################
 ## BEGIN
 #########################################################################################################
-ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
+ambibox = ambibox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 ambibox.connect()    
 showmenu = __settings__.getSetting("show_menu")
 menu = ambibox.getProfiles()

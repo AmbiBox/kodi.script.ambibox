@@ -20,7 +20,7 @@ import sys
 from xml.etree import ElementTree
 import xbmc
 import xbmcaddon
-import AmbiBox
+import ambibox
 
 #sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
 #import pydevd
@@ -35,7 +35,7 @@ __scriptname__ = __addon__.getAddonInfo('name')
 
 sys.path.append(__resource__)
 __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
-ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
+ambibox = ambibox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
 
 def info(msg):

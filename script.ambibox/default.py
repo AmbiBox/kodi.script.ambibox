@@ -32,7 +32,8 @@ user32 = ctypes.windll.user32
 screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
 
-debug = False
+"""
+debug = True
 remote = False
 if debug:
     if remote:
@@ -43,32 +44,37 @@ if debug:
         sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
         import pydevd
         pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
+"""
 
 # Modules XBMC
 import xbmc
 import xbmcgui
 import xbmcaddon
+import xbmcvfs
 
 # Modules AmbiBox
-import AmbiBox
+from ambibox import AmbiBox
 
 __addon__ = xbmcaddon.Addon()
-__cwd__ = __addon__.getAddonInfo('path')
+__cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
+#__cwd__ = __addon__.getAddonInfo('path')
 __scriptname__ = __addon__.getAddonInfo('name')
 __version__ = str(__addon__.getAddonInfo('version'))
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __language__ = __settings__.getLocalizedString
 __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
-__data__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'data'))
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
-
 sys.path.append(__resource__)
-sys.path.append(__data__)
-import psutil
-from Media import *
-media = Media()
 
-ambibox = AmbiBox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
+
+if xbmcvfs.exists(__resource__ + r'\\mediainfo.dll'):
+    from media import *
+    mediax = Media()
+    __usingMediaInfo__ = True
+else:
+    __usingMediaInfo__ = False
+
+ambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
 
 def notification(text):
@@ -126,24 +132,21 @@ class ProfileManager():
         return ret
 
     def chkAmbiboxRunning(self):
-        # uses psutil to check processes
+        proclist = []
+        cmd = 'WMIC PROCESS get Caption,Commandline,Processid'
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        for line in proc.stdout:
+            proclist.append(str(line))
+        proc.terminate()
+        del proc
+        proclist.sort()
         self.AmbiboxRunning = False
-        i = 0
-        procs = []
-        for p in psutil.process_iter():
-            try:
-                if p.name() is not None:
-                    pn = p.name()
-                    procs.append(pn)
-                    if pn == "AmbiBox.exe":
-                        self.AmbiboxRunning = True
-            except Exception, e:
-                #psutil throws an 'AccessDenied' error for process names unavailable to the user
-                #that exception type is unavailable in python
-                pass
-            finally:
-                i += 1
-            procs = sorted(procs)
+        for proc in proclist:
+            if proc[0:7] == "AmbiBox":
+                self.AmbiboxRunning = True
+                break
+            elif str(proc[0:1]).lower() == 'b':
+                break
         return self.AmbiboxRunning
 
     def startAmbibox(self):
@@ -162,6 +165,7 @@ class ProfileManager():
             return False
         else:
             if pid is not None:
+                self.AmbiboxRunning = True
                 return True
             else:
                 return False
@@ -169,7 +173,7 @@ class ProfileManager():
     @staticmethod
     def chkProfileSettings():
         __settings = xbmcaddon.Addon("script.ambibox")
-        if ambibox.connection == 0:
+        if ambibox.connect() == 0:
             pfls = ambibox.getProfiles()
             sets2chk = ['default_profile', 'audio_profile', 'video_profile']
             vidfmts = ['2D', '3DS', '3DT']
@@ -186,15 +190,14 @@ class ProfileManager():
                         info('Missing profile %s set to None' % setn)
 
     def start(self):
+        __settings = xbmcaddon.Addon("script.ambibox")
         pcnt = self.chkAmibiboxInstalled()
-        if (pcnt >= 0) and (__settings__.getSetting('start_ambibox')) is True:
-            success = self.startAmbibox()
-            if success:
-                self.AmbiboxRunning = True
-            else:
-                self.AmbiboxRunning = False
-                notification(__language__('32008'))
-                info('Could not start AmbiBox executable')
+        if (pcnt >= 0) and (__settings.getSetting('start_ambibox')) == 'true':
+            if self.chkAmbiboxRunning() is False:
+                success = self.startAmbibox()
+                if not success:
+                    notification(__language__('32008'))
+                    info('Could not start AmbiBox executable')
         if pcnt == 0:
             notification(__language__('32006'))
             info('No profiles found in Ambibox')
@@ -247,32 +250,21 @@ class ProfileManager():
         setlist2D = ['2D_43', '2D_32', '2D_169', '2D_185', '2D_22', '2D_24']
         setlist3DS = ['3DS_43', '3DS_32', '3DS_169', '3DS_185', '3DS_22', '3DS_24']
         setlist3DT = ['3DT_43', '3DT_32', '3DT_169', '3DT_185', '3DT_22', '3DT_24']
-        setlists = []
-        setlists.append(setlist2D)
-        setlists.append(setlist3DS)
-        setlists.append(setlist3DT)
+        setlists = [setlist2D, setlist3DS, setlist3DT]
+        ARdict = {'43': 1.333, '32': 1.5, '69': 1.778, '85': 1.85, '22': 2.2, '24': 2.4}
         for setlist in setlists:
             tpfl = []
             for settingid in setlist:
                 profl = str(__settings.getSetting(settingid))
                 if profl != 'None':
                     spfl = settingid[len(settingid)-2:]
-                    if spfl == "43":
-                        AR = 1.333
-                    elif spfl == "32":
-                        AR = 1.5
-                    elif spfl == "69":
-                        AR = 1.778
-                    elif spfl == "85":
-                        AR = 1.85
-                    elif spfl == "22":
-                        AR = 2.2
-                    elif spfl == "24":
-                        AR = 2.4
+                    AR = ARdict[spfl]
                     if profl in pfls:
                         tpfl.append([profl, AR, AR, AR])
                     elif not pfls:
+                        #Should never get to this statement
                         info("Profile existance not checked due to unavailability of Amibibox API")
+                        tpfl.append([profl, AR, AR, AR])
                     else:
                         tpfl.append([__settings.getSetting('default'), AR, AR, AR])
                         info("Profile in settings not a valid Ambibox profile - using default")
@@ -280,9 +272,8 @@ class ProfileManager():
             ARProfiles.append(tpfl)
 
         for tpfl in ARProfiles:
-            i = 0
             i1 = len(tpfl)
-            for pfl in tpfl:
+            for i, pfl in enumerate(tpfl):
                 if i == 0:
                     ll = 0.1
                 else:
@@ -293,28 +284,25 @@ class ProfileManager():
                     ul = float((pfl[1] + tpfl[i+1][1])/2)
                 pfl[2] = ll
                 pfl[3] = ul
-                i += 1
         return ARProfiles
 
     def setProfile(self, enable, profile):
-        #__settings = xbmcaddon.Addon("script.ambibox")
-        #__settings.setSetting("last_profile", profile)
         self.currentProfile = profile
-
-        ambibox.lock()
-        if enable == 'true' and profile != 'None':
-            notification(__language__(32033) % profile)
-            ambibox.turnOn()
-            ambibox.setProfile(profile)
-        else:
-            notification(__language__(32032))
-            ambibox.turnOff()
-        ambibox.unlock()
+        if ambibox.connect() == 0:
+            ambibox.lock()
+            if enable == 'true' and profile != 'None':
+                notification(__language__(32033) % profile)
+                ambibox.turnOn()
+                ambibox.setProfile(profile)
+            else:
+                notification(__language__(32032))
+                ambibox.turnOff()
+            ambibox.unlock()
 
     def SetAbxProfile(self, dar, vidfmt):
         # Sets the profile based on AR and video format
-        __settings = xbmcaddon.Addon("script.ambibox")
-        ambibox = AmbiBox.AmbiBox(__settings.getSetting("host"), int(__settings.getSetting("port")))
+        #__settings = xbmcaddon.Addon("script.ambibox")
+        #ambibox = AmbiBox.AmbiBox(__settings.getSetting("host"), int(__settings.getSetting("port")))
         ret = ""
         if ambibox.connect() == 0:
             pfls = ambibox.getProfiles()
@@ -326,6 +314,7 @@ class ProfileManager():
     @staticmethod
     def GetProfileName(pfls, DisplayAspectRatio, vidfmt, ARProfiles):
         # Retrieves the profile name based upon the AR and video format
+        __settings = xbmcaddon.Addon("script.ambibox")
         ret = ""
         if vidfmt == 'Normal':
             for pfl in ARProfiles[0]:
@@ -347,11 +336,11 @@ class ProfileManager():
                 return ret
             else:
                 info("Profile in xml not found by Ambibox - using default")
-                ret = __settings__.getSetting("default_profile")
+                ret = __settings.getSetting("default_profile")
                 return ret
         else:
             info("No profiles have been set up for this video type - using default")
-            return __settings__.getSetting("default_profile")
+            return __settings.getSetting("default_profile")
 
     def close(self):
         try:
@@ -360,7 +349,7 @@ class ProfileManager():
                 popobj.terminate()
                 del popobj
             del self.ABP
-        except Exception, e:
+        except Exception:
             pass
 
 
@@ -400,22 +389,29 @@ class CapturePlayer(xbmc.Player):
         __settings = xbmcaddon.Addon("script.ambibox")
         ambibox.connect()
         xxx = self.getPlayingFile()
-        infos = media.getInfos(xxx)
+        if __usingMediaInfo__ is True:
+            infos = mediax.getInfos(xxx)
+        else:
+            # use 480 as y dimension
+            rc = xbmc.RenderCapture()
+            tDar = rc.getAspectRatio()
+            infos = [int((480 * tDar) + 0.5), 480, 1, tDar]
+            del rc
         if infos[0] == 0:
             infos[0] = screenx
         if infos[1] == 0:
             infos[1] = screeny
         if infos[2] == 0:
             infos[2] = 1
-        if infos[3] == 0:
+        if infos[3] == 0.0:
             # If aspect ratio not obtained by mediainfo.dll, try getting it from RenderCapture (good for LiveTv)
             rc = xbmc.RenderCapture()
             tDar = rc.getAspectRatio()
-            if tDar != 0:
+            if tDar != 0.0:
                 infos[3] = tDar
             else:
                 infos[3] = float(infos[0])/float(infos[1])
-            rc = None
+            del rc
 
         if self.isPlayingAudio():
             pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
@@ -494,21 +490,25 @@ class XbmcMonitor(xbmc.Monitor):
         self.setScreensaver(True)
 
     def setScreensaver(self, enabled):
-        __settings = xbmcaddon.Addon("script.ambibox")
-
-        ambibox.lock()
-        if __settings.getSetting("disable_on_screensaver") and enabled:
-            notification(__language__(32032))
-            ambibox.turnOff()
-        else:
-            profile = pm.currentProfile
-            notification(__language__(32033) % profile)
-            ambibox.turnOn()
-            ambibox.setProfile(profile)
-        ambibox.unlock()
+        if ambibox.connect() == 0:
+            __settings = xbmcaddon.Addon("script.ambibox")
+            ambibox.lock()
+            if __settings.getSetting("disable_on_screensaver") and enabled:
+                notification(__language__(32032))
+                ambibox.turnOff()
+            else:
+                profile = pm.currentProfile
+                notification(__language__(32033) % profile)
+                ambibox.turnOn()
+                ambibox.setProfile(profile)
+            ambibox.unlock()
 
     def onSettingsChanged(self):
-        pm.chkProfileSettings()
+        __settings = xbmcaddon.Addon("script.ambibox")
+        if __settings.getSetting('start_ambibox') == 'true' and pm.AmbiboxRunning is False:
+            pm.start()
+        elif pm.AmbiboxRunning is True:
+            pm.chkProfileSettings()
 
 
 class XBMCDirect (threading.Thread):
@@ -542,7 +542,10 @@ class XBMCDirect (threading.Thread):
         tar = capture.getAspectRatio()
         if (width != 0 and height != 0 and ratio != 0):
             inimap = []
-            self.player.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            try:
+                self.player.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            except Exception, e:
+                pass
             # get one frame to get length
             aax = None
             while not self.player.isPlayingVideo():
@@ -554,7 +557,7 @@ class XBMCDirect (threading.Thread):
                 capture.waitForCaptureStateChangeEvent(1000)
                 aax = capture.getCaptureState()
                 if aax == xbmc.CAPTURE_STATE_FAILED:
-                    capture = None
+                    del capture
                     capture = xbmc.RenderCapture()
                 elif aax == xbmc.CAPTURE_STATE_DONE:
                     break
@@ -621,6 +624,7 @@ class XBMCDirect (threading.Thread):
 def main():
 
     pm.start()
+    monitor = XbmcMonitor()
     if ambibox.connect() == 0:
         notification(__language__(32030))
         info('Started - ver %s' % __version__)
@@ -629,7 +633,6 @@ def main():
     else:
         notification(__language__(32031))
         player = None
-        monitor = None
 
     while not xbmc.abortRequested:
         if player is None:
@@ -640,7 +643,6 @@ def main():
                 pm.updateprofilesettings()
                 pm.chkProfileSettings()
                 player = CapturePlayer()
-                monitor = XbmcMonitor()
         else:
             xbmc.sleep(100)
 

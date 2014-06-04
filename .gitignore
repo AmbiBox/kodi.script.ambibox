@@ -3,3 +3,6 @@
 *.iml
 *.exe
 *.zip
+strings.xml
+*.docx
+*.pdf

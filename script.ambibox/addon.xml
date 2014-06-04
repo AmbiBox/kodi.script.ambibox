@@ -10,7 +10,11 @@
 
   <extension point="xbmc.addon.metadata">
     <summary lang="en">AmbiBox Profile Manager</summary>
-    <description lang="en">Interfaces with the windows program AmbiBox to switch profiles for ambient lighting.</description>
+    <description lang="en">Interfaces with the windows program AmbiBox to switch profiles for ambient lighting.
+    This requires that the free program Ambibox is installed. Download here: http://www.ambibox.ru/en/index.php/Main_Page
+    Notice: this program will read from the windows registry to check that Ambibox has been installed!
+    In addition, if configured to start Ambibox if not running, it will access the program and start it!
+    </description>
     <disclaimer lang="en">For bugs, requests or general questions visit the AmbiBox thread on the AdaFruit forum.</disclaimer>
     <platform>windx</platform>
     <source>https://github.com/AmbiBox/AmbiBox-XBMC</source>
