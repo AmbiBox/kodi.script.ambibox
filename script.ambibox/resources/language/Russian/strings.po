@@ -46,20 +46,12 @@ msgctxt "#32008"
 msgid "Ambibox не может быть запущен"
 msgstr ""
 
-msgctxt "#32009" #Notification
+msgctxt "#32009"
 msgid "Начните Ambibox с XBMC, если не работает"
 msgstr ""
 
 msgctxt "#32010"
 msgid "Профили"
-msgstr ""
-
-msgctxt "#32041"
-msgid "Разрешение экрана по X (пикселей)"
-msgstr ""
-
-msgctxt "#32042"
-msgid "Разрешение экрана по Y (пикселей)"
 msgstr ""
 
 msgctxt "#32011"
@@ -87,35 +79,15 @@ msgid "Профиль для аудио"
 msgstr ""
 
 msgctxt "#32017"
-msgid "Использовать DirectXBMC захват "
+msgid "Использовать DirectXBMC захват"
 msgstr ""
 
 msgctxt "#32018"
-msgid "Используйте автоматическое переключение формата изображения "
+msgid "Используйте автоматическое переключение формата изображения"
 msgstr ""
 
 msgctxt "#32019"
-msgid "Воспроизведение видео: "
-msgstr ""
-
-msgctxt "#32025"
-msgid "  Выберите -&gt;"
-msgstr ""
-
-msgctxt "#32026"
-msgid "Используйте профиля видео по умолчанию"
-msgstr ""
-
-msgctxt "#32027"
-msgid "Автоматический переключатель на основе AR"
-msgstr ""
-
-msgctxt "#32028"
-msgid "Показать меню профилей "
-msgstr ""
-
-msgctxt "#32029"
-msgid "выключать LEDs"
+msgid "Воспроизведение видео:"
 msgstr ""
 
 msgctxt "#32020"
@@ -136,6 +108,106 @@ msgstr ""
 
 msgctxt "#32024"
 msgid "Не показывать меню при воспроизведении"
+msgstr ""
+
+msgctxt "#32025"
+msgid "Выберите -&gt;"
+msgstr ""
+
+msgctxt "#32026"
+msgid "Используйте профиля видео по умолчанию"
+msgstr ""
+
+msgctxt "#32027"
+msgid "Автоматический переключатель на основе AR"
+msgstr ""
+
+msgctxt "#32028"
+msgid "Показать меню профилей"
+msgstr ""
+
+msgctxt "#32029"
+msgid "выключать LEDs"
+msgstr ""
+
+msgctxt "#32030"
+msgid "Подключение к AmbiBox"
+msgstr ""
+
+msgctxt "#32031"
+msgid "Ошибка подключения к AmbiBox"
+msgstr ""
+
+msgctxt "#32032"
+msgid "Ambibox выключен"
+msgstr ""
+
+msgctxt "#32033"
+msgid "Установлен профиль %s"
+msgstr ""
+
+msgctxt "#32034"
+msgid "DirectXBMC успешно"
+msgstr ""
+
+msgctxt "#32035"
+msgid "DirectXBMC ошибка"
+msgstr ""
+
+msgctxt "#32036"
+msgid "Настройки обновляется из профилей Ambibox"
+msgstr ""
+
+msgctxt "#32037"
+msgid ""
+msgstr ""
+
+msgctxt "#32038"
+msgid ""
+msgstr ""
+
+msgctxt "#32039"
+msgid ""
+msgstr ""
+
+msgctxt "#32040"
+msgid "скачать mediainfo.dll"
+msgstr ""
+
+msgctxt "#32041"
+msgid "Разрешение экрана по X (пикселей)"
+msgstr ""
+
+msgctxt "#32042"
+msgid "Разрешение экрана по Y (пикселей)"
+msgstr ""
+
+msgctxt "#32043"
+msgid "DirectXBMC захват качество"
+msgstr ""
+
+msgctxt "#32044"
+msgid "низкий"
+msgstr ""
+
+msgctxt "#32045"
+msgid "среда"
+msgstr ""
+
+msgctxt "#32046"
+msgid "большой"
+msgstr ""
+
+msgctxt "#32047"
+msgid "наивысший"
+msgstr ""
+
+msgctxt "#32048"
+msgid ""
+msgstr ""
+
+msgctxt "#32049"
+msgid ""
 msgstr ""
 
 msgctxt "#32050"
@@ -186,30 +258,27 @@ msgctxt "#32061"
 msgid "3D Соотношение сторон Профили для hTAB(hOU)"
 msgstr ""
 
-msgctxt "#32030"
-msgid "Подключение к AmbiBox"
+msgctxt "#32062"
+msgid "mediainfo.dll уже установлена ​​на системе"
 msgstr ""
 
-msgctxt "#32031"
-msgid "Ошибка подключения к AmbiBox"
+msgctxt "#32063"
+msgid "Это дополнение будет использовать библиотеку MediaInfo\nCopyright (c) 2002-2014 MediaArea.net SARL.\nСкачать?"
 msgstr ""
 
-msgctxt "#32032"
-msgid "Ambibox выключен"
+msgctxt "#32064"
+msgid "загрузка %s байт %s"
 msgstr ""
 
-msgctxt "#32033"
-msgid "Установлен профиль %s"
+msgctxt "#32065"
+msgid "Ошибка загрузки"
 msgstr ""
 
-msgctxt "#32034"
-msgid "DirectXBMC успешно"
+msgctxt "#32066"
+msgid "Загрузка отменена"
 msgstr ""
 
-msgctxt "#32035"
-msgid "DirectXBMC ошибка"
+msgctxt "#32067"
+msgid "Скачать удалось"
 msgstr ""
 
-msgctxt "#32036"
-msgid "Настройки обновляется из профилей Ambibox"
-msgstr ""

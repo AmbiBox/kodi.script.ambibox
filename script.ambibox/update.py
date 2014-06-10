@@ -52,6 +52,7 @@ def notification(text):
 
 
 def updateprofilesettings():
+    global ambibox
     pstrl = []
     if ambibox.connect() == 0:
         pfls = ambibox.getProfiles()
@@ -79,6 +80,7 @@ def updateprofilesettings():
 
 
 def chkProfileSettings():
+    global ambibox
     if ambibox.connect() == 0:
         __settings = xbmcaddon.Addon("script.ambibox")
         pfls = ambibox.getProfiles()

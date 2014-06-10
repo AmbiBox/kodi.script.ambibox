@@ -14,8 +14,8 @@
 # *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 # *  http://www.gnu.org/copyleft/gpl.html
 # *
+
 #Modules General
-# To Do: Rewrite instructions
 
 import os
 import sys
@@ -28,6 +28,7 @@ import subprocess
 from xml.etree import ElementTree
 from operator import itemgetter
 import ctypes
+
 user32 = ctypes.windll.user32
 screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
@@ -57,7 +58,6 @@ from ambibox import AmbiBox
 
 __addon__ = xbmcaddon.Addon()
 __cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
-#__cwd__ = __addon__.getAddonInfo('path')
 __scriptname__ = __addon__.getAddonInfo('name')
 __version__ = str(__addon__.getAddonInfo('version'))
 __settings__ = xbmcaddon.Addon("script.ambibox")
@@ -65,33 +65,61 @@ __language__ = __settings__.getLocalizedString
 __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 sys.path.append(__resource__)
+__usingMediaInfo__ = False
+mediax = None
 
+def chkMediaInfo():
+    # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
+    global __usingMediaInfo__
+    global mediax
+    if xbmcvfs.exists(__resource__ + r'\\mediainfo.dll'):
+        __usingMediaInfo__ = True
+    else:
+        try:
+            aReg = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
+            key = OpenKey(aReg, r'Software\Microsoft\Windows\CurrentVersion\App Paths\MediaInfo.exe')
+            path = QueryValue(key, None)
+            CloseKey(key)
+            CloseKey(aReg)
+            if path != '':
+                __usingMediaInfo__ = True
+        except WindowsError, e:
+            pass
+#    __usingMediaInfo__ = False
+    if __usingMediaInfo__ is True:
+        from media import *
+        mediax = Media()
 
-if xbmcvfs.exists(__resource__ + r'\\mediainfo.dll'):
-    from media import *
-    mediax = Media()
-    __usingMediaInfo__ = True
-else:
-    __usingMediaInfo__ = False
-
+chkMediaInfo()
 ambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
 
-def notification(text):
+def notification(text, *silence):
     text = text.encode('utf-8')
     info(text)
     if __settings__.getSetting("notification") == 'true':
         icon = __settings__.getAddonInfo("icon")
         smallicon = icon.encode("utf-8")
-        xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
+        #xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
+        dialog = xbmcgui.Dialog()
+        if silence:
+            dialog.notification('Ambibox', text, smallicon, 1000, False)
+        else:
+            dialog.notification('Ambibox', text, smallicon, 1000, True)
 
 
-def debug(msg):
-    xbmc.log("### [%s] - %s" % (__scriptname__, msg,), level=xbmc.LOGDEBUG)
+def debug(txt):
+    if isinstance(txt, str):
+        txt = txt.decode("utf-8")
+    message = u"### [%s] - %s" % (__scriptname__, txt)
+    xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGDEBUG)
 
 
-def info(msg):
-    xbmc.log("### [%s] - %s" % (__scriptname__, msg,), level=xbmc.LOGNOTICE)
+def info(txt):
+    if isinstance(txt, str):
+        txt = txt.decode("utf-8")
+    message = u"### [%s] - %s" % (__scriptname__, txt)
+    xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGNOTICE)
 
 
 class ProfileManager():
@@ -99,6 +127,7 @@ class ProfileManager():
         self.AmbiboxRunning = False
         self.currentProfile = ""
         self._ABP = None
+        self.softoff = False
 
     @property
     def ABP(self):
@@ -127,9 +156,12 @@ class ProfileManager():
                 ret = 0
             else:
                 ret = int(profileCount[0])
+            CloseKey(key)
         except WindowsError or EnvironmentError:
             ret = -1
+        CloseKey(aReg)
         return ret
+
 
     def chkAmbiboxRunning(self):
         proclist = []
@@ -155,7 +187,10 @@ class ProfileManager():
             key = OpenKey(aReg, r'Software\Server IR')
             p = QueryValueEx(key, 'InstallPath')
             ambiboxpath = xbmc.translatePath(str(p[0]) + r'\Ambibox.exe')
+            CloseKey(key)
+            CloseKey(aReg)
         except WindowsError:
+            CloseKey(aReg)
             return False
         try:
             popobj = subprocess.Popen([ambiboxpath])
@@ -209,6 +244,7 @@ class ProfileManager():
             if self.AmbiboxRunning:
                 self.updateprofilesettings()
                 self.chkProfileSettings()
+        self.setProfile(__settings.getSetting('default_enable'), __settings.getSetting('default_profile'), True)
 
     @staticmethod
     def updateprofilesettings():
@@ -286,17 +322,21 @@ class ProfileManager():
                 pfl[3] = ul
         return ARProfiles
 
-    def setProfile(self, enable, profile):
+    def setProfile(self, enable, profile, *force):
         self.currentProfile = profile
         if ambibox.connect() == 0:
             ambibox.lock()
             if enable == 'true' and profile != 'None':
                 notification(__language__(32033) % profile)
-                ambibox.turnOn()
+                if (ambibox.getStatus() == "off" and self.softoff) or force:
+                    ambibox.turnOn()
                 ambibox.setProfile(profile)
+                self.softoff = False
             else:
                 notification(__language__(32032))
-                ambibox.turnOff()
+                if ambibox.getStatus() != "off":
+                    self.softoff = True
+                    ambibox.turnOff()
             ambibox.unlock()
 
     def SetAbxProfile(self, dar, vidfmt):
@@ -355,15 +395,15 @@ class ProfileManager():
 
 class CapturePlayer(xbmc.Player):
 
-    def __init__(self):
+    def __init__(self, *args):
         xbmc.Player.__init__(self)
         self.inDataMap = None
         self.re3D = re.compile("[-. _]3d[-. _]", re.IGNORECASE)
         self.reTAB = re.compile("[-. _]h?tab[-. _]", re.IGNORECASE)
         self.reSBS = re.compile("[-. _]h?sbs[-. _]", re.IGNORECASE)
+        self.onPBSfired = False
 
-    @staticmethod
-    def showmenu():
+    def showmenu(self):
         menu = ambibox.getProfiles()
         menu.append(__language__(32021))
         menu.append(__language__(32022))
@@ -388,35 +428,38 @@ class CapturePlayer(xbmc.Player):
     def onPlayBackStarted(self):
         __settings = xbmcaddon.Addon("script.ambibox")
         ambibox.connect()
-        xxx = self.getPlayingFile()
-        if __usingMediaInfo__ is True:
-            infos = mediax.getInfos(xxx)
-        else:
-            # use 480 as y dimension
-            rc = xbmc.RenderCapture()
-            tDar = rc.getAspectRatio()
-            infos = [int((480 * tDar) + 0.5), 480, 1, tDar]
-            del rc
-        if infos[0] == 0:
-            infos[0] = screenx
-        if infos[1] == 0:
-            infos[1] = screeny
-        if infos[2] == 0:
-            infos[2] = 1
-        if infos[3] == 0.0:
-            # If aspect ratio not obtained by mediainfo.dll, try getting it from RenderCapture (good for LiveTv)
-            rc = xbmc.RenderCapture()
-            tDar = rc.getAspectRatio()
-            if tDar != 0.0:
-                infos[3] = tDar
-            else:
-                infos[3] = float(infos[0])/float(infos[1])
-            del rc
+        self.onPBSfired = True
 
         if self.isPlayingAudio():
             pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
         if self.isPlayingVideo():
+            xxx = self.getPlayingFile()
+            if __usingMediaInfo__ is True:
+                infos = mediax.getInfos(xxx)
+            else:
+                infos = [0, 0, 1, 0]
+            if infos[3] == 0:
+                rc = xbmc.RenderCapture()
+                tDar = rc.getAspectRatio()
+                if tDar == 0:
+                    tDar = float(infos[0])/float(infos[1])
+                if 0.95 < tDar < 1.05:
+                    tDar = float(screenx)/float(screeny)
+                infos[3] = tDar
+            if __settings.getSetting('directXBMC_enable') == 'true':
+                quality = __settings.getSetting('directXBMC_quality')
+                if quality == '0':
+                    infos[1] = 64
+                elif quality == '1':
+                    infos[1] = 256
+                elif quality == '2':
+                    infos[1] = 512
+                else:
+                    if infos[1] == 0:
+                        infos[1] = screeny
+                infos[0] = int(infos[1]*infos[3])
+
             m = self.re3D.search(xxx)
             vidfmt = ""
             if m and __settings.getSetting('3D_enable'):
@@ -462,26 +505,30 @@ class CapturePlayer(xbmc.Player):
                 xd.close()
 
     def onPlayBackEnded(self):
-        ambibox.connect()
-        __settings = xbmcaddon.Addon("script.ambibox")
-        pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
+        if ambibox.connect() == 0:
+            __settings = xbmcaddon.Addon("script.ambibox")
+            pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
+        self.onPBSfired = False
 
     def onPlayBackStopped(self):
-        ambibox.connect()
-        __settings = xbmcaddon.Addon("script.ambibox")
-        pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
+        if ambibox.connect() == 0:
+            __settings = xbmcaddon.Addon("script.ambibox")
+            pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
+        self.onPBSfired = False
 
     def close(self):
-        ambibox.connect()
-        ambibox.lock()
-        ambibox.turnOff()
-        ambibox.unlock()
-        ambibox.disconnect()
+        if ambibox.connect() == 0:
+            ambibox.lock()
+            ambibox.turnOff()
+            ambibox.unlock()
+            ambibox.disconnect()
 
 
 class XbmcMonitor(xbmc.Monitor):
+
     def __init__(self):
         xbmc.Monitor.__init__(self)
+        self.AbxAlreadyOff = False
 
     def onScreensaverDeactivated(self):
         self.setScreensaver(False)
@@ -494,12 +541,17 @@ class XbmcMonitor(xbmc.Monitor):
             __settings = xbmcaddon.Addon("script.ambibox")
             ambibox.lock()
             if __settings.getSetting("disable_on_screensaver") and enabled:
-                notification(__language__(32032))
+                notification(__language__(32032), False)
+                if ambibox.getStatus() == "off":
+                    self.AbxAlreadyOff = True
+                else:
+                    self.AbxAlreadyOff = False
                 ambibox.turnOff()
             else:
                 profile = pm.currentProfile
                 notification(__language__(32033) % profile)
-                ambibox.turnOn()
+                if not self.AbxAlreadyOff:
+                    ambibox.turnOn()
                 ambibox.setProfile(profile)
             ambibox.unlock()
 
@@ -509,6 +561,7 @@ class XbmcMonitor(xbmc.Monitor):
             pm.start()
         elif pm.AmbiboxRunning is True:
             pm.chkProfileSettings()
+        chkMediaInfo()
 
 
 class XBMCDirect (threading.Thread):
@@ -534,12 +587,12 @@ class XBMCDirect (threading.Thread):
     def run(self):
         threading.Thread.run(self)
         capture = xbmc.RenderCapture()
-        width = self.infos[0]
-        height = self.infos[1]
-        ratio = self.infos[2]
         tw = capture.getHeight()
         th = capture.getWidth()
         tar = capture.getAspectRatio()
+        width = self.infos[0]
+        height = self.infos[1]
+        ratio = self.infos[2]
         if (width != 0 and height != 0 and ratio != 0):
             inimap = []
             try:
@@ -644,6 +697,11 @@ def main():
                 pm.chkProfileSettings()
                 player = CapturePlayer()
         else:
+            # This is to get around a bug where onPlayBackStarted is not fired for external players present
+            # in releases up to Gotham 13.1
+            if player.isPlayingVideo() and not player.onPBSfired:
+                info('Firing missed onPlayBackStarted event')
+                player.onPlayBackStarted()
             xbmc.sleep(100)
 
     pm.close()
