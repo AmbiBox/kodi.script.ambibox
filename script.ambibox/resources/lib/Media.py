@@ -1,4 +1,4 @@
-from MediaInfoDLL import MediaInfo, Stream
+from mediainfodll import MediaInfo, Stream
 
 import xbmc
 import xbmcaddon
@@ -25,7 +25,7 @@ class Media:
         width = self.mi.Get(Stream.Video, 0, "Width")
         height = self.mi.Get(Stream.Video, 0, "Height")
         ratio = self.mi.Get(Stream.Video, 0, "PixelAspectRatio")
-        dar = self.mi.Get(Stream.Video, 0, "DisplayAspectRatio") #added to get dar
+        dar = self.mi.Get(Stream.Video, 0, "DisplayAspectRatio")
         self.mi.Close()
         try:
             width = int(float(width))
@@ -38,14 +38,15 @@ class Media:
         except:
             dar = float(0)
 
-        return [width, height, 1, dar] #mod to return dar
+        return [width, height, 1, dar]
+
     def smbToUNC(self, smbFile):
         testFile = smbFile[0:3]
         newFile = ""
         if testFile == "smb":
             for i in xrange(0,len(smbFile)):
                 if smbFile[i] == "/":
-                    newFile = newFile + "\\"
+                    newFile += "\\"
                 else:
                     newFile = newFile + smbFile[i]
             retFile = newFile[4:]

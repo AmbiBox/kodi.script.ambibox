@@ -19,21 +19,52 @@
 import os
 import xbmc
 import xbmcaddon
+import xbmcvfs
+from _winreg import *
 
 __addon__ = xbmcaddon.Addon()
 __cwd__ = __addon__.getAddonInfo('path')
 
 from ctypes import *
+
+if xbmcvfs.exists(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo.dll')):
+    if os.name == "nt" or os.name == "dos" or os.name == "os2" or os.name == "ce":
+        try:
+            MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo_i386.dll'))
+        except WindowsError:
+            MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo.dll'))
+        MustUseAnsi = 0
+    else:
+        MediaInfoDLL_Handler = CDLL(os.path.join(__cwd__, 'resources', 'lib', 'libmediainfo.so.0'))
+        MustUseAnsi = 1
+else:
+    try:
+        aReg = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
+        key = OpenKey(aReg, r'Software\Microsoft\Windows\CurrentVersion\App Paths\MediaInfo.exe')
+        fpath = QueryValueEx(key, None)
+        CloseKey(key)
+        CloseKey(aReg)
+        if fpath[0] != '':
+            drive, path = os.path.splitdrive(fpath[0])
+            path, filename = os.path.split(path)
+            try:
+                MediaInfoDLL_Handler = WinDLL(os.path.join(drive, path, 'mediainfo_i386.dll'))
+            except WindowsError:
+                MediaInfoDLL_Handler = WinDLL(os.path.join(drive, path, 'mediainfo.dll'))
+            MustUseAnsi = 0
+    except WindowsError, e:
+        pass
+"""
 if os.name == "nt" or os.name == "dos" or os.name == "os2" or os.name == "ce":
     try:
-        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'MediaInfo_i386.dll'))
+        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo_i386.dll'))
     except WindowsError:
-        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'MediaInfo.dll'))
+        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo.dll'))
     MustUseAnsi = 0
 else:
     MediaInfoDLL_Handler = CDLL(os.path.join(__cwd__, 'resources', 'lib', 'libmediainfo.so.0'))
     MustUseAnsi = 1
-
+"""
 
 # types --> C Python:
 # size_t            c_size_t
