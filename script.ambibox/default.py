@@ -85,7 +85,6 @@ def chkMediaInfo():
                 __usingMediaInfo__ = True
         except WindowsError, e:
             pass
-#    __usingMediaInfo__ = False
     if __usingMediaInfo__ is True:
         from media import *
         mediax = Media()

@@ -13,19 +13,11 @@ __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __language__ = __settings__.getLocalizedString
 
-strDownloading = __language__(13413)
-strDownload = __language__(33003)
-
 """
 debug = True
 remote = False
 if debug:
     import sys
-    if xbmcvfs.exists(__resource__ + r'\\mediainfo.dll'):
-        try:
-            xbmcvfs.delete(__resource__ + r'\\mediainfo.dll')
-        except:
-            pass
     if remote:
         sys.path.append(r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\pycharm-debug.py3k\\')
         import pydevd
@@ -34,6 +26,12 @@ if debug:
         sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
         import pydevd
         pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
+
+    if xbmcvfs.exists(__resource__ + r'\\mediainfo.dll'):
+        try:
+            xbmcvfs.delete(__resource__ + r'\\mediainfo.dll')
+        except Exception, e:
+            pass
 """
 
 # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
@@ -54,16 +52,14 @@ else:
 
 if __usingMediaInfo__ is True:
     dialog = xbmcgui.Dialog()
-    # dialog.ok("Download mediainfo.dll", "mediainfo.dll already installed on system")
-    dialog.ok(__language__('32040'), __language__('32062'))
-    exit()
+    dialog.ok(__language__(32040), __language__(32062))
     del dialog
+    exit()
 
 
 def main():
     dialog = xbmcgui.Dialog()
-    #if dialog.yesno("Download mediainfo.dll", "This add-on will use MediaInfo library\nCopyright (c) 2002-2014 MediaArea.net SARL.\nDownload?"):
-    if dialog.yesno(__language__('32040'), __language__('32063')):
+    if dialog.yesno(__language__(32040), __language__(32063)):
         del dialog
         downloadfile("https://github.com/AmbiBox/AmbiBox-XBMC/releases/download/pre-mediainfo/mediainfo.dll")
 
@@ -77,8 +73,7 @@ def downloadfile(url):
         meta = u.info()
         file_size = int(meta.getheaders("Content-Length")[0])
         mprogress = xbmcgui.DialogProgress()
-        #mprogress.create("Downloading: %s bytes: %s" % (file_name, file_size))
-        mprogress.create(__language__('32064') % (file_name, file_size))
+        mprogress.create(__language__(32064) % (file_name, file_size))
 
         file_size_dl = 0
         block_sz = 8192
@@ -93,8 +88,7 @@ def downloadfile(url):
             mprogress.update(state)
         if mprogress.iscanceled():
             dialog = xbmcgui.Dialog()
-            #dialog.ok('', 'Download canceled')
-            dialog.ok('', __language__('32066'))
+            dialog.ok('', __language__(32066))
             exit()
         mprogress.close()
         f.close()
@@ -107,8 +101,7 @@ def downloadfile(url):
         except:
             pass
         dialog = xbmcgui.Dialog()
-        #dialog.ok('', 'Download failed')
-        dialog.ok('', __language__('32065'))
+        dialog.ok('', __language__(32065))
         if xbmcvfs.exists(fullfn):
             try:
                 xbmcvfs.delete(fullfn)
@@ -118,12 +111,10 @@ def downloadfile(url):
     success = checkhash(fullfn)
     if success:
         dialog = xbmcgui.Dialog()
-        #dialog.ok('', 'Download succeeded')
-        dialog.ok('', __language__('32067'))
+        dialog.ok('', __language__(32067))
     else:
         dialog = xbmcgui.Dialog()
-#       dialog.ok('', 'Download failed')
-        dialog.ok('', __language__('32065'))
+        dialog.ok('', __language__(32065))
         if xbmcvfs.exists(fullfn):
             try:
                 xbmcvfs.delete(fullfn)
