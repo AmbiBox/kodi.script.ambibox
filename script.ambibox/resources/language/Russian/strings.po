@@ -13,7 +13,8 @@ msgstr ""
 "Language: ru\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#Add-on messages id=32001 to 32061
+#Add-on messages id=32001 to 32067
+
 msgctxt "#32001"
 msgid "Основные"
 msgstr ""
@@ -158,17 +159,7 @@ msgctxt "#32036"
 msgid "Настройки обновляется из профилей Ambibox"
 msgstr ""
 
-msgctxt "#32037"
-msgid ""
-msgstr ""
-
-msgctxt "#32038"
-msgid ""
-msgstr ""
-
-msgctxt "#32039"
-msgid ""
-msgstr ""
+#Empty strings from 32037-32039
 
 msgctxt "#32040"
 msgid "скачать mediainfo.dll"
@@ -202,13 +193,7 @@ msgctxt "#32047"
 msgid "наивысший"
 msgstr ""
 
-msgctxt "#32048"
-msgid ""
-msgstr ""
-
-msgctxt "#32049"
-msgid ""
-msgstr ""
+#Empty strings from 32048-32049
 
 msgctxt "#32050"
 msgid "Отключить заставку"

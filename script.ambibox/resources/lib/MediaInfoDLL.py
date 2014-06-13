@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ## Copyright (c) MediaArea.net SARL. All Rights Reserved.
  #
  # Use of this source code is governed by a BSD-style license that can
@@ -17,7 +18,6 @@
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 import os
-import xbmc
 import xbmcaddon
 import xbmcvfs
 from _winreg import *
@@ -54,17 +54,7 @@ else:
             MustUseAnsi = 0
     except WindowsError, e:
         pass
-"""
-if os.name == "nt" or os.name == "dos" or os.name == "os2" or os.name == "ce":
-    try:
-        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo_i386.dll'))
-    except WindowsError:
-        MediaInfoDLL_Handler = WinDLL(os.path.join(__cwd__, 'resources', 'lib', 'mediainfo.dll'))
-    MustUseAnsi = 0
-else:
-    MediaInfoDLL_Handler = CDLL(os.path.join(__cwd__, 'resources', 'lib', 'libmediainfo.so.0'))
-    MustUseAnsi = 1
-"""
+
 
 # types --> C Python:
 # size_t            c_size_t
@@ -217,11 +207,11 @@ class MediaInfo:
         self.MediaInfo_Delete(self.Handle)
     def Open(self, File):
         if type(File)==str:
-            return self.MediaInfoA_Open (self.Handle, File);
+            return self.MediaInfoA_Open (self.Handle, File)
         elif MustUseAnsi:
-            return self.MediaInfoA_Open (self.Handle, File.encode("utf-8"));
+            return self.MediaInfoA_Open (self.Handle, File.encode("utf-8"))
         else:
-            return self.MediaInfo_Open (self.Handle, File);
+            return self.MediaInfo_Open (self.Handle, File)
     def Open_Buffer(self, Begin, Begin_Size, End=None, End_Size=0):
         return self.MediaInfo_Open_Buffer(self.Handle, Begin, Begin_Size, End, End_Size)
     def Save(self):
@@ -417,7 +407,7 @@ class MediaInfoList:
     def Get(self, FilePos, StreamKind, StreamNumber, Parameter, InfoKind=Info.Text, SearchKind=Info.Name):
         return self.MediaInfoList_Get (self.Handle, FilePos, StreamKind, StreamNumber, (Parameter), InfoKind, SearchKind)
     def SetI(self, ToSet, FilePos, StreamKind, StreamNumber, Parameter, OldParameter=u""):
-        return self.MediaInfoList_SetI (self, Handle, ToSet, FilePos, StreamKind, StreamNumber, Parameter, OldParameter)
+        return self.MediaInfoList_SetI (self.Handle, ToSet, FilePos, StreamKind, StreamNumber, Parameter, OldParameter)
     def Set(self, ToSet, FilePos, StreamKind, StreamNumber, Parameter, OldParameter=u""):
         return self.MediaInfoList_Set (self.Handle, ToSet, FilePos, StreamKind, StreamNumber, Parameter, OldParameter)
 

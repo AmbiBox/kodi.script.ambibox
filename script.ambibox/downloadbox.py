@@ -1,3 +1,19 @@
+# -*- coding: utf-8 -*-
+# *  This Program is free software; you can redistribute it and/or modify
+# *  it under the terms of the GNU General Public License as published by
+# *  the Free Software Foundation; either version 2, or (at your option)
+# *  any later version.
+# *
+# *  This Program is distributed in the hope that it will be useful,
+# *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+# *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# *  GNU General Public License for more details.
+# *
+# *  You should have received a copy of the GNU General Public License
+# *  along with this program; see the file LICENSE.txt.  If not, write to
+# *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+# *  http://www.gnu.org/copyleft/gpl.html
+# *
 import xbmc
 import xbmcgui
 import xbmcvfs
@@ -5,6 +21,7 @@ import xbmcaddon
 import os
 import urllib2
 import hashlib
+import sys
 from _winreg import *
 
 __addon__ = xbmcaddon.Addon('script.ambibox')
@@ -17,7 +34,6 @@ __language__ = __settings__.getLocalizedString
 debug = True
 remote = False
 if debug:
-    import sys
     if remote:
         sys.path.append(r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\pycharm-debug.py3k\\')
         import pydevd
@@ -54,7 +70,7 @@ if __usingMediaInfo__ is True:
     dialog = xbmcgui.Dialog()
     dialog.ok(__language__(32040), __language__(32062))
     del dialog
-    exit()
+    sys.exit()
 
 
 def main():
@@ -89,7 +105,7 @@ def downloadfile(url):
         if mprogress.iscanceled():
             dialog = xbmcgui.Dialog()
             dialog.ok('', __language__(32066))
-            exit()
+            sys.exit()
         mprogress.close()
         f.close()
         del u
@@ -107,7 +123,7 @@ def downloadfile(url):
                 xbmcvfs.delete(fullfn)
             except:
                 pass
-        exit()
+        sys.exit()
     success = checkhash(fullfn)
     if success:
         dialog = xbmcgui.Dialog()

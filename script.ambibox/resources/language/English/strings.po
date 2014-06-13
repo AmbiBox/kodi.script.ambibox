@@ -13,6 +13,8 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#Add-on messages id=32001 to 32067
+
 msgctxt "#32001"
 msgid "General"
 msgstr ""
@@ -157,17 +159,7 @@ msgctxt "#32036"
 msgid "Settings refreshed from Ambibox profiles"
 msgstr ""
 
-msgctxt "#32037"
-msgid ""
-msgstr ""
-
-msgctxt "#32038"
-msgid ""
-msgstr ""
-
-msgctxt "#32039"
-msgid ""
-msgstr ""
+#Empty strings from 32037-32039
 
 msgctxt "#32040"
 msgid "Download mediainfo.dll"
@@ -201,13 +193,7 @@ msgctxt "#32047"
 msgid "Highest"
 msgstr ""
 
-msgctxt "#32048"
-msgid ""
-msgstr ""
-
-msgctxt "#32049"
-msgid ""
-msgstr ""
+#Empty strings from 32048-32049
 
 msgctxt "#32050"
 msgid "Disable on screensaver"

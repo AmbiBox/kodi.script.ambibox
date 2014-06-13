@@ -22,10 +22,6 @@ import xbmc
 import xbmcaddon
 import ambibox
 
-#sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
-#import pydevd
-#pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
-
 __addon__ = xbmcaddon.Addon("script.ambibox")
 __cwd__ = __addon__.getAddonInfo('path')
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))

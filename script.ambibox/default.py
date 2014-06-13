@@ -238,7 +238,7 @@ class ProfileManager():
         elif pcnt == -1:
             notification(__language__('32007'))
             info('Ambibox installation not found: terminating script')
-            exit()
+            sys.exit()
         else:
             if self.AmbiboxRunning:
                 self.updateprofilesettings()
