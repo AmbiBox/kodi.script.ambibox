@@ -159,7 +159,7 @@ msgctxt "#32036"
 msgid "Settings refreshed from Ambibox profiles"
 msgstr ""
 
-#Empty strings from 32037-32039
+#Empty strings 32037-39
 
 msgctxt "#32040"
 msgid "Download mediainfo.dll"
@@ -193,7 +193,7 @@ msgctxt "#32047"
 msgid "Highest"
 msgstr ""
 
-#Empty strings from 32048-32049
+#Empty strings 32048-49
 
 msgctxt "#32050"
 msgid "Disable on screensaver"
@@ -266,4 +266,6 @@ msgstr ""
 msgctxt "#32067"
 msgid "Download succeeded"
 msgstr ""
+
+
 

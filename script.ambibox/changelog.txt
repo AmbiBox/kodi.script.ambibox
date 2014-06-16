@@ -1,3 +1,8 @@
+1.0.1
+Removed checking settings on menu launch
+Increased logging for profile identification
+fixed strings.po
+
 1.0.0
 Removed dardata.xml usage and created settings pages for common aspect ratios
 Added method to refresh the profiles on the settings pages from Ambibox

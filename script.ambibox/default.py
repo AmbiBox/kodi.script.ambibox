@@ -32,6 +32,7 @@ import ctypes
 user32 = ctypes.windll.user32
 screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
+user32 = None
 
 """
 debug = True
@@ -72,7 +73,7 @@ def chkMediaInfo():
     # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
     global __usingMediaInfo__
     global mediax
-    if xbmcvfs.exists(__resource__ + r'\\mediainfo.dll'):
+    if xbmcvfs.exists(xbmc.translatePath(os.path.join(__resource__ + 'mediainfo.dll'))):
         __usingMediaInfo__ = True
     else:
         try:
@@ -83,7 +84,7 @@ def chkMediaInfo():
             CloseKey(aReg)
             if path != '':
                 __usingMediaInfo__ = True
-        except WindowsError, e:
+        except WindowsError:
             pass
     if __usingMediaInfo__ is True:
         from media import *
@@ -94,6 +95,11 @@ ambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("
 
 
 def notification(text, *silence):
+    """
+    Display an XBMC notification box, optionally turn off sound associated with it
+    @type text: str
+    @type silence: bool
+    """
     text = text.encode('utf-8')
     info(text)
     if __settings__.getSetting("notification") == 'true':
@@ -226,6 +232,7 @@ class ProfileManager():
     def start(self):
         __settings = xbmcaddon.Addon("script.ambibox")
         pcnt = self.chkAmibiboxInstalled()
+        info('%s profiles found in registry' % pcnt)
         if (pcnt >= 0) and (__settings.getSetting('start_ambibox')) == 'true':
             if self.chkAmbiboxRunning() is False:
                 success = self.startAmbibox()
@@ -244,6 +251,8 @@ class ProfileManager():
                 self.updateprofilesettings()
                 self.chkProfileSettings()
         self.setProfile(__settings.getSetting('default_enable'), __settings.getSetting('default_profile'), True)
+        if __settings.getSetting('default_enable') == 'false':
+            self.softoff = True
 
     @staticmethod
     def updateprofilesettings():
@@ -251,6 +260,8 @@ class ProfileManager():
         pstrl = []
         if ambibox.connect() == 0:
             pfls = ambibox.getProfiles()
+            numpfls = len(pfls)
+            info('%s profile(s) retrieved from program' % numpfls)
             defpfl = 'None'
             pstrl.append('None')
             pstrl.append('|')
@@ -268,6 +279,7 @@ class ProfileManager():
                 fixe.set('values', pstr)
                 fixe.set('default', defpfl)
             doc.write(__settingsdir__ + "\\settings.xml")
+
             xbmc.executebuiltin('UpdateLocalAddons')
 
     @staticmethod
@@ -339,20 +351,31 @@ class ProfileManager():
             ambibox.unlock()
 
     def SetAbxProfile(self, dar, vidfmt):
-        # Sets the profile based on AR and video format
-        #__settings = xbmcaddon.Addon("script.ambibox")
-        #ambibox = AmbiBox.AmbiBox(__settings.getSetting("host"), int(__settings.getSetting("port")))
-        ret = ""
+        """
+        Sets the profile based on AR and video format
+        @type dar: float
+        @type vidfmt: str
+        @rtype: bool
+        """
+        ret = False
         if ambibox.connect() == 0:
             pfls = ambibox.getProfiles()
             ARProfiles = self.getARProfiles()
             pname = self.GetProfileName(pfls, dar, vidfmt, ARProfiles)
             self.setProfile('true', pname)
+            ret = True
         return ret
 
     @staticmethod
     def GetProfileName(pfls, DisplayAspectRatio, vidfmt, ARProfiles):
-        # Retrieves the profile name based upon the AR and video format
+        """
+        Retrieves the profile name based upon the AR and video format
+        @type pfls: list of string
+        @type DisplayAspectRatio: float
+        @type vidfmt: str
+        @type ARProfiles: list of string
+        @rtype: string
+        """
         __settings = xbmcaddon.Addon("script.ambibox")
         ret = ""
         if vidfmt == 'Normal':
@@ -490,9 +513,7 @@ class CapturePlayer(xbmc.Player):
                 else:
                     info("Error retrieving DAR from video file")
             elif videomode == 2:   #Show menu
-                    show_menu = __settings.getSetting("show_menu")
-                    if (show_menu == 'true'):
-                        self.showmenu()
+                self.showmenu()
             elif videomode == 3:   #Turn off
                 ambibox.lock()
                 ambibox.turnOff()
@@ -551,7 +572,7 @@ class XbmcMonitor(xbmc.Monitor):
                 notification(__language__(32033) % profile)
                 if not self.AbxAlreadyOff:
                     ambibox.turnOn()
-                ambibox.setProfile(profile)
+                pm.setProfile('true', profile)
             ambibox.unlock()
 
     def onSettingsChanged(self):
@@ -713,4 +734,5 @@ def main():
         del monitor
 
 pm = ProfileManager()
+
 main()

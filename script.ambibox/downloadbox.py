@@ -52,7 +52,7 @@ if debug:
 
 # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
 __usingMediaInfo__ = False
-if xbmcvfs.exists(__resource__ + r'\\mediainfo.dll'):
+if xbmcvfs.exists(xbmc.translatePath(os.path.join('mediainfo.dll'))):
     __usingMediaInfo__ = True
 else:
     try:
