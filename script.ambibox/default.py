@@ -53,6 +53,7 @@ import xbmc
 import xbmcgui
 import xbmcaddon
 import xbmcvfs
+import importlib
 
 # Modules AmbiBox
 from ambibox import AmbiBox
@@ -68,6 +69,7 @@ __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 sys.path.append(__resource__)
 __usingMediaInfo__ = False
 mediax = None
+
 
 def chkMediaInfo():
     # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
@@ -87,8 +89,12 @@ def chkMediaInfo():
         except WindowsError:
             pass
     if __usingMediaInfo__ is True:
-        from media import *
-        mediax = Media()
+        #from media import *
+        try:
+            mediax = importlib.import_module('media')
+        except ImportError:
+            mediax = None
+            __usingMediaInfo__ = False
 
 chkMediaInfo()
 ambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
@@ -105,7 +111,7 @@ def notification(text, *silence):
     if __settings__.getSetting("notification") == 'true':
         icon = __settings__.getAddonInfo("icon")
         smallicon = icon.encode("utf-8")
-        #xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
+        # xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
         dialog = xbmcgui.Dialog()
         if silence:
             dialog.notification('Ambibox', text, smallicon, 1000, False)
@@ -128,11 +134,14 @@ def info(txt):
 
 
 class ProfileManager():
+    LIGHTS_ON = True
+    LIGHTS_OFF = False
+
     def __init__(self):
         self.AmbiboxRunning = False
         self.currentProfile = ""
         self._ABP = None
-        self.softoff = False
+        self.lightStatus = None
 
     @property
     def ABP(self):
@@ -152,7 +161,7 @@ class ProfileManager():
 
     @staticmethod
     def chkAmibiboxInstalled():
-        #returns number of profiles if installed, 0 if installed with no profiles, -1 not installed
+        # returns number of profiles if installed, 0 if installed with no profiles, -1 not installed
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         try:
             key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
@@ -166,7 +175,6 @@ class ProfileManager():
             ret = -1
         CloseKey(aReg)
         return ret
-
 
     def chkAmbiboxRunning(self):
         proclist = []
@@ -206,6 +214,7 @@ class ProfileManager():
         else:
             if pid is not None:
                 self.AmbiboxRunning = True
+                self.lightSwitch(self.LIGHTS_OFF)
                 return True
             else:
                 return False
@@ -233,12 +242,18 @@ class ProfileManager():
         __settings = xbmcaddon.Addon("script.ambibox")
         pcnt = self.chkAmibiboxInstalled()
         info('%s profiles found in registry' % pcnt)
+        self.chkAmbiboxRunning()
+        if self.AmbiboxRunning:
+            self.lightSwitch(self.LIGHTS_OFF)
+            self.lightStatus = self.LIGHTS_OFF
+
         if (pcnt >= 0) and (__settings.getSetting('start_ambibox')) == 'true':
-            if self.chkAmbiboxRunning() is False:
+            if self.AmbiboxRunning is False:
                 success = self.startAmbibox()
                 if not success:
                     notification(__language__('32008'))
                     info('Could not start AmbiBox executable')
+                    sys.exit()
         if pcnt == 0:
             notification(__language__('32006'))
             info('No profiles found in Ambibox')
@@ -250,9 +265,7 @@ class ProfileManager():
             if self.AmbiboxRunning:
                 self.updateprofilesettings()
                 self.chkProfileSettings()
-        self.setProfile(__settings.getSetting('default_enable'), __settings.getSetting('default_profile'), True)
-        if __settings.getSetting('default_enable') == 'false':
-            self.softoff = True
+        self.setProfile(__settings.getSetting('default_enable'), __settings.getSetting('default_profile'))
 
     @staticmethod
     def updateprofilesettings():
@@ -334,21 +347,51 @@ class ProfileManager():
         return ARProfiles
 
     def setProfile(self, enable, profile, *force):
+        """
+        If connected to AmbiBox, change the profile to profile.
+        If force = true, turn on lights regardless of state
+        @type enable: string (either 'true' or 'false')
+        @type profile: string
+        @type force: bool
+        @rtype: None
+        """
         self.currentProfile = profile
         if ambibox.connect() == 0:
             ambibox.lock()
             if enable == 'true' and profile != 'None':
                 notification(__language__(32033) % profile)
-                if (ambibox.getStatus() == "off" and self.softoff) or force:
-                    ambibox.turnOn()
                 ambibox.setProfile(profile)
-                self.softoff = False
             else:
                 notification(__language__(32032))
-                if ambibox.getStatus() != "off":
-                    self.softoff = True
-                    ambibox.turnOff()
             ambibox.unlock()
+        if force or (enable == 'true' and profile != 'None'):
+            self.lightSwitch(self.LIGHTS_ON)
+        else:
+            self.lightSwitch(self.LIGHTS_OFF)
+
+    def lightSwitch(self, lightChangeState):
+        """
+        Turns lights on or off, but will not turn on if user intiated off state outside of program
+        Lightstate is class constant either LIGHTS_ON or LIGHTS_OFF
+        @param lightChangeState: LIGHTS_ON or LIGHTS_OFF
+        @type  lightChangeState: bool
+        @rtype: None
+        """
+        userTurnedOff = False
+        if ambibox.connect() == 0:
+            currentlightstatus = ambibox.getStatus()
+            if (self.lightStatus is self.LIGHTS_ON) and (currentlightstatus == 'off'):
+                userTurnedOff = True
+            ambibox.lock()
+            try:
+                if (lightChangeState is self.LIGHTS_ON) and (userTurnedOff is False) and (XbmcMonitor.ssOn is not True):
+                    ambibox.turnOn()
+                elif lightChangeState is self.LIGHTS_OFF:
+                    ambibox.turnOff()
+            except Exception:
+                pass
+            ambibox.unlock()
+        self.lightStatus = lightChangeState
 
     def SetAbxProfile(self, dar, vidfmt):
         """
@@ -451,14 +494,16 @@ class CapturePlayer(xbmc.Player):
         __settings = xbmcaddon.Addon("script.ambibox")
         ambibox.connect()
         self.onPBSfired = True
-
+        infos = []
         if self.isPlayingAudio():
             pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
         if self.isPlayingVideo():
             xxx = self.getPlayingFile()
             if __usingMediaInfo__ is True:
-                infos = mediax.getInfos(xxx)
+                mediaclass = getattr(mediax, 'Media')
+                getinfosfxn = getattr(mediaclass, 'getInfos')
+                infos = getinfosfxn(mediaclass(), xxx)
             else:
                 infos = [0, 0, 1, 0]
             if infos[3] == 0:
@@ -504,22 +549,26 @@ class CapturePlayer(xbmc.Player):
             except (ValueError, TypeError):
                 videomode = 2
 
-            if videomode == 0:    #Use Default Video Profile
+            if videomode == 0:    # Use Default Video Profile
+                info('Using default video profile')
                 pm.setProfile('true', __settings.getSetting("video_profile"))
-            elif videomode == 1:  #Autoswitch
+            elif videomode == 1:  # Autoswitch
                 DAR = infos[3]
                 if DAR != 0:
                     pm.SetAbxProfile(DAR, vidfmt)
+                    info('Autoswitch on AR')
                 else:
                     info("Error retrieving DAR from video file")
-            elif videomode == 2:   #Show menu
+            elif videomode == 2:   # Show menu
                 self.showmenu()
-            elif videomode == 3:   #Turn off
+                info('Using menu for profile pick')
+            elif videomode == 3:   # Turn off
+                info('User set lights off for video')
                 ambibox.lock()
                 ambibox.turnOff()
                 ambibox.unlock()
 
-            if __settings.getSetting("directXBMC_enable") == 'true':   #Added
+            if __settings.getSetting("directXBMC_enable") == 'true':
                 xd = XBMCDirect(infos, self)
                 xd.run()
                 xd.close()
@@ -545,35 +594,30 @@ class CapturePlayer(xbmc.Player):
 
 
 class XbmcMonitor(xbmc.Monitor):
+    ssOn = False
+    lightsWereOff = None
 
     def __init__(self):
         xbmc.Monitor.__init__(self)
-        self.AbxAlreadyOff = False
+        self.ssOn = False
 
     def onScreensaverDeactivated(self):
-        self.setScreensaver(False)
+        self.ssOn = False
+        if self.lightsWereOff is not True:
+            pm.lightSwitch(pm.LIGHTS_ON)
 
     def onScreensaverActivated(self):
-        self.setScreensaver(True)
-
-    def setScreensaver(self, enabled):
+        self.ssOn = True
+        __settings = xbmcaddon.Addon("script.ambibox")
         if ambibox.connect() == 0:
-            __settings = xbmcaddon.Addon("script.ambibox")
-            ambibox.lock()
-            if __settings.getSetting("disable_on_screensaver") and enabled:
-                notification(__language__(32032), False)
-                if ambibox.getStatus() == "off":
-                    self.AbxAlreadyOff = True
-                else:
-                    self.AbxAlreadyOff = False
-                ambibox.turnOff()
+            if ambibox.getStatus() == 'off':
+                self.lightsWereOff = True
+            elif __settings.getSetting("disable_on_screensaver"):
+                notification(__language__(32032), True)  # silent notification
+                pm.lightSwitch(pm.LIGHTS_OFF)
+                self.lightsWereOff = False
             else:
-                profile = pm.currentProfile
-                notification(__language__(32033) % profile)
-                if not self.AbxAlreadyOff:
-                    ambibox.turnOn()
-                pm.setProfile('true', profile)
-            ambibox.unlock()
+                self.lightsWereOff = False
 
     def onSettingsChanged(self):
         __settings = xbmcaddon.Addon("script.ambibox")
@@ -617,7 +661,7 @@ class XBMCDirect (threading.Thread):
             inimap = []
             try:
                 self.player.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
-            except Exception, e:
+            except Exception:
                 pass
             # get one frame to get length
             aax = None
@@ -672,7 +716,7 @@ class XBMCDirect (threading.Thread):
                         newlen = len(image)
                         self.player.inDataMap.seek(0)
                         seeked = self.player.inDataMap.read_byte()
-                        if ord(seeked) == 248:  #check that XBMC Direct is running
+                        if ord(seeked) == 248:  # check that XBMC Direct is running
                             if newlen != length:
                                 length = newlen
                                 inimapnew = inimap[0:6]
@@ -695,9 +739,8 @@ class XBMCDirect (threading.Thread):
 
 
 def main():
-
-    pm.start()
     monitor = XbmcMonitor()
+    pm.start()
     if ambibox.connect() == 0:
         notification(__language__(32030))
         info('Started - ver %s' % __version__)
