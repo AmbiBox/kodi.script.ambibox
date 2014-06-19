@@ -19,11 +19,11 @@ http://www.ambibox.ru/en/index.php/Configuring_XBMC_script
 Notice: this program will read from the windows registry to check that Ambibox has been installed!
 In addition, if configured to start Ambibox if not running, it will access the program and start it.
     </description>
-    <disclaimer lang="en">For bugs, requests or general questions visit the AmbiBox thread on the AdaFruit forum.</disclaimer>
+    <disclaimer lang="en">For bugs, requests or general questions visit the AmbiBox thread on the XBMC forum.</disclaimer>
     <platform>windx</platform>
     <source>https://github.com/AmbiBox/AmbiBox-XBMC</source>
     <website>http://www.ambibox.ru/en/index.php/Configuring_XBMC_script</website>
-    <forum>http://forums.adafruit.com/viewtopic.php?f=47&amp;t=36032&amp;start=540</forum>
+    <forum>http://forum.xbmc.org/showthread.php?tid=198173</forum>
     <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
   </extension>
 </addon>
