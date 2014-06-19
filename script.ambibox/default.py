@@ -17,6 +17,7 @@
 
 #Modules General
 
+
 import os
 import sys
 import mmap
@@ -53,7 +54,6 @@ import xbmc
 import xbmcgui
 import xbmcaddon
 import xbmcvfs
-import importlib
 
 # Modules AmbiBox
 from ambibox import AmbiBox
@@ -91,7 +91,7 @@ def chkMediaInfo():
     if __usingMediaInfo__ is True:
         #from media import *
         try:
-            mediax = importlib.import_module('media')
+            import media as mediax
         except ImportError:
             mediax = None
             __usingMediaInfo__ = False
@@ -494,16 +494,13 @@ class CapturePlayer(xbmc.Player):
         __settings = xbmcaddon.Addon("script.ambibox")
         ambibox.connect()
         self.onPBSfired = True
-        infos = []
         if self.isPlayingAudio():
             pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
         if self.isPlayingVideo():
             xxx = self.getPlayingFile()
             if __usingMediaInfo__ is True:
-                mediaclass = getattr(mediax, 'Media')
-                getinfosfxn = getattr(mediaclass, 'getInfos')
-                infos = getinfosfxn(mediaclass(), xxx)
+                infos = mediax.Media().getInfos(xxx)
             else:
                 infos = [0, 0, 1, 0]
             if infos[3] == 0:
@@ -729,6 +726,7 @@ class XBMCDirect (threading.Thread):
                             self.player.inDataMap[11:(11 + length)] = str(image)
                             # write first byte to indicate we finished writing the data
                             self.player.inDataMap[0] = (chr(240))
+                            xbmc.sleep(20)
                 self.player.inDataMap.close()
                 self.player.inDataMap = None
             else:
