@@ -35,7 +35,6 @@ screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
 user32 = None
 
-"""
 debug = True
 remote = False
 if debug:
@@ -47,7 +46,7 @@ if debug:
         sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
         import pydevd
         pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
-"""
+
 
 # Modules XBMC
 import xbmc
@@ -69,6 +68,10 @@ __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 sys.path.append(__resource__)
 __usingMediaInfo__ = False
 mediax = None
+try:
+    xbmc_version = float(str(xbmc.getInfoLabel("System.BuildVersion"))[0:4])
+except ValueError:
+    xbmc_version = 13.1
 
 
 def chkMediaInfo():
@@ -91,7 +94,12 @@ def chkMediaInfo():
     if __usingMediaInfo__ is True:
         #from media import *
         try:
+<<<<<<< HEAD
+            # import media as mediax
+            from media import Media as mediax
+=======
             import media as mediax
+>>>>>>> origin/master
         except ImportError:
             mediax = None
             __usingMediaInfo__ = False
@@ -467,6 +475,7 @@ class CapturePlayer(xbmc.Player):
         self.reTAB = re.compile("[-. _]h?tab[-. _]", re.IGNORECASE)
         self.reSBS = re.compile("[-. _]h?sbs[-. _]", re.IGNORECASE)
         self.onPBSfired = False
+        self.xd = None
 
     def showmenu(self):
         menu = ambibox.getProfiles()
@@ -494,10 +503,51 @@ class CapturePlayer(xbmc.Player):
         __settings = xbmcaddon.Addon("script.ambibox")
         ambibox.connect()
         self.onPBSfired = True
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/master
         if self.isPlayingAudio():
             pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
         if self.isPlayingVideo():
+<<<<<<< HEAD
+            infos = [0, 0, 1, 0]
+            mi_called = False
+            xxx = ''
+            if __settings.getSetting('video_choice') == '1' or __settings.getSetting('directXBMC_enable') == 'true':
+                # mode = Autoswitch or XBMC_Direct
+                # Get aspect ratio
+                # First try infoLabels, then Capture, then MediaInfo. Default to screen dimensions.
+
+                #Info Label Method
+                vp_ar = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
+                try:
+                    infos[3] = float(vp_ar)
+                except TypeError, e:
+                    infos[3] = float(0)
+
+                # Capture Method
+
+                if infos[3] == 0:
+                    rc = xbmc.RenderCapture()
+                    infos[3] = rc.getAspectRatio()
+
+                #MediaInfo Method
+
+                if ((infos[3] == 0) or (0.95 < infos[3] < 1.05)) and mediax is not None:
+                    xxx = self.getPlayingFile()
+                    if xxx[0:2] != 'pvr':  # Cannot use for LiveTV stream
+                        try:
+                            infos = mediax().getInfos(xxx)
+                        except Exception, e:
+                            infos = [0, 0, 1, 0]
+                        mi_called = True
+
+                if (0.95 < infos[3] < 1.05) or infos[3] == 0:  # fallback to screen aspect ratio
+                    infos[3] = float(screenx)/float(screeny)
+
+=======
             xxx = self.getPlayingFile()
             if __usingMediaInfo__ is True:
                 infos = mediax.Media().getInfos(xxx)
@@ -511,34 +561,87 @@ class CapturePlayer(xbmc.Player):
                 if 0.95 < tDar < 1.05:
                     tDar = float(screenx)/float(screeny)
                 infos[3] = tDar
+>>>>>>> origin/master
             if __settings.getSetting('directXBMC_enable') == 'true':
+                # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
+                # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
+
+                # InfoLabel Method
+                vp_res = xbmc.getInfoLabel("VideoPlayer.VideoResolution")
+                if str(vp_res).lower() == '4k':
+                    vp_res_int = 2160
+                else:
+                    try:
+                        vp_res_int = int(vp_res)
+                    except ValueError or TypeError:
+                        vp_res_int = 0
+                if vp_res_int != 0 and infos[3] != 0:
+                    if infos[3] > 1.7778:
+                        infos[0] = int(vp_res_int * 1.7778)
+                        infos[1] = int(infos[0] / infos[3])
+                    else:
+                        infos[0] = int(infos[3] * vp_res_int)
+                        infos[1] = vp_res_int
+
+                #MediaInfo Method
+                if ((infos[0] == 0) or (infos[1] == 0)) and mediax is not None:
+                    xxx = self.getPlayingFile()
+                    if xxx[0:3] != 'pvr' and not mi_called:  # Cannot use for LiveTV stream
+                        try:
+                            infos = mediax().getInfos(xxx)
+                        except Exception, e:
+                            infos = [0, 0, 1, 0]
+
+                if (infos[0] == 0) or (infos[1] == 0):
+                    infos[0] = screenx
+                    infos[1] = screeny
+
+                # Set quality
+
                 quality = __settings.getSetting('directXBMC_quality')
+                minq = 32
+                maxq = infos[1]
                 if quality == '0':
-                    infos[1] = 64
+                    infos[1] = minq
                 elif quality == '1':
-                    infos[1] = 256
+                    infos[1] = int(minq + ((maxq - minq)/3))
                 elif quality == '2':
-                    infos[1] = 512
+                    infos[1] = int(minq + (2*(maxq - minq)/3))
                 else:
                     if infos[1] == 0:
                         infos[1] = screeny
                 infos[0] = int(infos[1]*infos[3])
 
-            m = self.re3D.search(xxx)
-            vidfmt = ""
-            if m and __settings.getSetting('3D_enable'):
-                n = self.reTAB.search(xxx)
-                if n:
-                    vidfmt = "TAB"
+            if __settings.getSetting('3D_enable') == 'true':
+                # Get Stereoscopic Information
+                # Use infoLabels
+                stereoMode = xbmc.getInfoLabel("VideoPlayer.StereoscopicMode")
+                vidfmt = ''
+                if stereoMode == 'top_bottom':
+                    vidfmt = 'TAB'
+                elif stereoMode == 'left_right':
+                    vidfmt = 'SBS'
                 else:
-                    n = self.reSBS.search(xxx)
-                    if n:
-                        vidfmt = "SBS"
+                    if xxx == '':
+                        xxx = self.getPlayingFile()
+                    m = self.re3D.search(xxx)
+                    if m and __settings.getSetting('3D_enable'):
+                        n = self.reTAB.search(xxx)
+                        if n:
+                            vidfmt = "TAB"
+                        else:
+                            n = self.reSBS.search(xxx)
+                            if n:
+                                vidfmt = "SBS"
+                            else:
+                                info("Error in 3D filename - using default settings")
+                                main().pm.setProfile('true', __settings.getSetting("video_profile"))
                     else:
-                        info("Error in 3D filename - using default settings")
-                        main().pm.setProfile('true', __settings.getSetting("video_profile"))
+                        vidfmt = "Normal"
             else:
                 vidfmt = "Normal"
+
+            # Get video mode from settings
 
             videomode = __settings.getSetting("video_choice")
             try:
@@ -561,26 +664,31 @@ class CapturePlayer(xbmc.Player):
                 info('Using menu for profile pick')
             elif videomode == 3:   # Turn off
                 info('User set lights off for video')
-                ambibox.lock()
-                ambibox.turnOff()
-                ambibox.unlock()
+                pm.lightSwitch(pm.LIGHTS_OFF)
+
+        # Start separate thread for XBMC Capture
 
             if __settings.getSetting("directXBMC_enable") == 'true':
-                xd = XBMCDirect(infos, self)
-                xd.run()
-                xd.close()
+                if self.xd is not None:
+                    self.xd.close()
+                    self.xd = None
+                self.xd = XBMCDirect(infos, self)
+                self.xd.run()
+                # if self.xd is not None:
+                #     self.xd.close()
 
     def onPlayBackEnded(self):
         if ambibox.connect() == 0:
             __settings = xbmcaddon.Addon("script.ambibox")
             pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
+            if self.xd is not None:
+                self.xd.close()
+            if self.xd is not None:
+                self.xd = None
         self.onPBSfired = False
 
     def onPlayBackStopped(self):
-        if ambibox.connect() == 0:
-            __settings = xbmcaddon.Addon("script.ambibox")
-            pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
-        self.onPBSfired = False
+        self.onPlayBackEnded()
 
     def close(self):
         if ambibox.connect() == 0:
@@ -726,6 +834,11 @@ class XBMCDirect (threading.Thread):
                             self.player.inDataMap[11:(11 + length)] = str(image)
                             # write first byte to indicate we finished writing the data
                             self.player.inDataMap[0] = (chr(240))
+<<<<<<< HEAD
+                            if xbmc.abortRequested:
+                                return
+=======
+>>>>>>> origin/master
                             xbmc.sleep(20)
                 self.player.inDataMap.close()
                 self.player.inDataMap = None
@@ -760,9 +873,10 @@ def main():
         else:
             # This is to get around a bug where onPlayBackStarted is not fired for external players present
             # in releases up to Gotham 13.1
-            if player.isPlayingVideo() and not player.onPBSfired:
-                info('Firing missed onPlayBackStarted event')
-                player.onPlayBackStarted()
+            if xbmc_version < 13.11:
+                if player.isPlayingVideo() and not player.onPBSfired:
+                    info('Firing missed onPlayBackStarted event')
+                    player.onPlayBackStarted()
             xbmc.sleep(100)
 
     pm.close()
