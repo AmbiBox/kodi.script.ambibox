@@ -35,6 +35,7 @@ screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
 user32 = None
 
+"""
 debug = True
 remote = False
 if debug:
@@ -46,7 +47,7 @@ if debug:
         sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
         import pydevd
         pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
-
+"""
 
 # Modules XBMC
 import xbmc
