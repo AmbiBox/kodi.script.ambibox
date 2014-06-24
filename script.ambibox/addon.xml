@@ -19,20 +19,13 @@ http://wiki.xbmc.org/index.php?title=Add-on:AmbiBox
 Notice: this program will read from the windows registry to check that Ambibox has been installed!
 In addition, if configured to start Ambibox if not running, it will access the program and start it.
     </description>
-<<<<<<< HEAD
     <disclaimer lang="en">For bugs, requests or general questions visit the AmbiBox thread on the XBMC forums.</disclaimer>
     <platform>windx</platform>
     <source>https://github.com/AmbiBox/AmbiBox-XBMC</source>
     <website>http://wiki.xbmc.org/index.php?title=Add-on:AmbiBox</website>
-=======
-    <disclaimer lang="en">For bugs, requests or general questions visit the AmbiBox thread on the XBMC forum.</disclaimer>
-    <platform>windx</platform>
-    <source>https://github.com/AmbiBox/AmbiBox-XBMC</source>
-    <website>http://www.ambibox.ru/en/index.php/Configuring_XBMC_script</website>
->>>>>>> origin/master
     <forum>http://forum.xbmc.org/showthread.php?tid=198173</forum>
     <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
-	<language></language>
-	<email></email>
+    <language></language>
+    <email></email>
   </extension>
 </addon>
