@@ -29,6 +29,7 @@ import subprocess
 from xml.etree import ElementTree
 from operator import itemgetter
 import ctypes
+#from json import loads as jloads
 
 user32 = ctypes.windll.user32
 screenx = user32.GetSystemMetrics(0)
@@ -95,12 +96,8 @@ def chkMediaInfo():
     if __usingMediaInfo__ is True:
         #from media import *
         try:
-<<<<<<< HEAD
             # import media as mediax
             from media import Media as mediax
-=======
-            import media as mediax
->>>>>>> origin/master
         except ImportError:
             mediax = None
             __usingMediaInfo__ = False
@@ -141,6 +138,21 @@ def info(txt):
     message = u"### [%s] - %s" % (__scriptname__, txt)
     xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGNOTICE)
 
+
+"""
+def getStereoscopicMode():
+    query = '{"jsonrpc": "2.0", "method": "GUI.GetProperties", "params": {"properties": ["stereoscopicmode"]}, "id": 1}'
+    result = xbmc.executeJSONRPC(query)
+    jsonr = jloads(result)
+    print jsonr
+    ret = 'unknown'
+    if jsonr.has_key('result'):
+        if jsonr['result'].has_key('stereoscopicmode'):
+            if jsonr['result']['stereoscopicmode'].has_key('mode'):
+                ret = jsonr['result']['stereoscopicmode']['mode'].encode('utf-8')
+    #"off", "split_vertical", "split_horizontal", "row_interleaved", "hardware_based", "anaglyph_cyan_red", "anaglyph_green_magenta", "monoscopic"
+    return ret
+"""
 
 class ProfileManager():
     LIGHTS_ON = True
@@ -504,15 +516,11 @@ class CapturePlayer(xbmc.Player):
         __settings = xbmcaddon.Addon("script.ambibox")
         ambibox.connect()
         self.onPBSfired = True
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/master
         if self.isPlayingAudio():
             pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
 
         if self.isPlayingVideo():
-<<<<<<< HEAD
             infos = [0, 0, 1, 0]
             mi_called = False
             xxx = ''
@@ -548,21 +556,6 @@ class CapturePlayer(xbmc.Player):
                 if (0.95 < infos[3] < 1.05) or infos[3] == 0:  # fallback to screen aspect ratio
                     infos[3] = float(screenx)/float(screeny)
 
-=======
-            xxx = self.getPlayingFile()
-            if __usingMediaInfo__ is True:
-                infos = mediax.Media().getInfos(xxx)
-            else:
-                infos = [0, 0, 1, 0]
-            if infos[3] == 0:
-                rc = xbmc.RenderCapture()
-                tDar = rc.getAspectRatio()
-                if tDar == 0:
-                    tDar = float(infos[0])/float(infos[1])
-                if 0.95 < tDar < 1.05:
-                    tDar = float(screenx)/float(screeny)
-                infos[3] = tDar
->>>>>>> origin/master
             if __settings.getSetting('directXBMC_enable') == 'true':
                 # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
                 # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
@@ -616,6 +609,7 @@ class CapturePlayer(xbmc.Player):
             if __settings.getSetting('3D_enable') == 'true':
                 # Get Stereoscopic Information
                 # Use infoLabels
+                #sm2 = getStereoscopicMode()
                 stereoMode = xbmc.getInfoLabel("VideoPlayer.StereoscopicMode")
                 vidfmt = ''
                 if stereoMode == 'top_bottom':
@@ -835,11 +829,8 @@ class XBMCDirect (threading.Thread):
                             self.player.inDataMap[11:(11 + length)] = str(image)
                             # write first byte to indicate we finished writing the data
                             self.player.inDataMap[0] = (chr(240))
-<<<<<<< HEAD
                             if xbmc.abortRequested:
                                 return
-=======
->>>>>>> origin/master
                             xbmc.sleep(20)
                 self.player.inDataMap.close()
                 self.player.inDataMap = None
