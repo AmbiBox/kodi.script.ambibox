@@ -267,5 +267,15 @@ msgctxt "#32067"
 msgid "Download succeeded"
 msgstr "Скачать удалось"
 
+msgctxt "#32068"
+msgid "Throttle (100=full framerate, 1=1fps)"
+msgstr "Дроссельной (100 = с полной частотой кадров, 1 = 1 кадр в секунду)"
 
+msgctxt "#32069"
+msgid "LEDs On"
+msgstr "огни на"
+
+msgctxt "#32070"
+msgid "LEDs Off"
+msgstr "выключенным светом "
 

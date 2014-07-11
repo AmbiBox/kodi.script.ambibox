@@ -1,0 +1,54 @@
+<settings>
+  
+  <category label="32001"><!--[General]-->
+    <setting default="127.0.0.1" id="host" label="32002" type="text" /><!--[API host]-->
+    <setting default="3636" id="port" label="32003" type="number" /><!--[API port]-->
+	<setting default="true" id="notification" label="32004" type="bool" /><!--[Notifications]-->
+    <setting default="false" id="start_ambibox" label="32009" type="bool" /><!--[Start Ambibox with XBMC if not running]-->
+    <setting action="RunScript($CWD\update.py)" label="32005" option="close" type="action" /><!--[Refresh profiles from AmbiBox (requires exit to AddOns/Services)]-->
+    <setting action="RunScript($CWD\downloadbox.py)" label="32040" type="action" /><!--[Download mediainfo.dll]-->
+    <setting default="on" id="manual_switch" label="32001" type="text" visible="false" /><!--[General]-->
+  </category>
+
+  <category label="32010"><!--[Profiles]-->
+    <setting default="true" id="default_enable" label="32011" type="bool" /><!--[Enable default profile]-->
+    <setting default="None" id="default_profile" label="32012" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="eq(-1,true)" /><!--[Default profile]-->
+    <setting default="true" id="audio_enable" label="32015" type="bool" /><!--[Enable audio profile]-->
+    <setting default="None" id="audio_profile" label="32016" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="eq(-1,true)" /><!--[Audio profile]-->
+    <setting id="text" label="32019" type="lsep" /><!--[On video playback:]-->
+    <setting default="2" id="video_choice" label="32025" lvalues="32026|32027|32028|32029" type="enum" /><!--[Choose -][Use default video profile][Auto switch based on AR][Show menu of profiles][Turn off LEDs]-->
+    <setting default="None" enable="eq(-1,0)" id="video_profile" label="32014" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[Default video profile]-->
+    <setting default="true" id="disable_on_screensaver" label="32050" type="bool" value="true" /><!--[Disable on screensaver]-->
+    <setting default="true" id="show_menu" label="32023" type="bool" value="true" visible="false" /><!--[Show menu when playing]-->
+    <setting default="false" id="directXBMC_enable" label="32017" type="bool" /><!--[Enable XBMCDirect capture]-->
+    <setting default="0" enable="eq(-1,true)" id="directXBMC_quality" label="32043" lvalues="32044|32045|32046|32047" type="enum" /><!--[XBMCDirect capture quality][Low][Medium][High][Highest]-->
+    <setting default="100" enable="eq(-2,true)" id="throttle" label="32068" option="int" range="1,100" type="slider" /><!--[Throttle (100=full framerate, 1=1fps)]-->
+ </category>
+
+ <category label="32053"><!--[2D Aspect ratio profiles]-->
+    <setting default="None" id="2D_43" label="32054" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="true" /><!--[4:3 (SD)]-->
+    <setting default="None" id="2D_32" label="32055" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="true" /><!--[3:2]-->
+    <setting default="None" id="2D_169" label="32056" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="true" /><!--[16:9 (HD)]-->
+    <setting default="None" id="2D_185" label="32057" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="true" /><!--[1.85:1]-->
+    <setting default="None" id="2D_22" label="32058" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="true" /><!--[2.2:1]-->
+    <setting default="None" id="2D_24" label="32059" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" visible="true" /><!--[2.4:1]-->
+
+ </category>
+ <category label="32060"><!--[3D Aspect Ratio Profiles for hSBS]-->
+    <setting default="false" id="3D_enable" label="32052" type="bool" value="false" /><!--[Enable 3D profiles]-->
+    <setting label="32060" type="lsep" /><!--[3D Aspect Ratio Profiles for hSBS]-->
+    <setting default="None" enable="eq(-2,true)" id="3DS_43" label="32054" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[4:3 (SD)]-->
+    <setting default="None" enable="eq(-3,true)" id="3DS_32" label="32055" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[3:2]-->
+    <setting default="None" enable="eq(-4,true)" id="3DS_169" label="32056" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[16:9 (HD)]-->
+    <setting default="None" enable="eq(-5,true)" id="3DS_185" label="32057" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[1.85:1]-->
+    <setting default="None" enable="eq(-6,true)" id="3DS_22" label="32058" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[2.2:1]-->
+    <setting default="None" enable="eq(-7,true)" id="3DS_24" label="32059" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[2.4:1]-->
+    <setting label="32061" type="lsep" /><!--[3D Aspect Ratio Profiles for hTAB(hOU)]-->
+    <setting default="None" enable="eq(-9,true)" id="3DT_43" label="32054" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[4:3 (SD)]-->
+    <setting default="None" enable="eq(-10,true)" id="3DT_32" label="32055" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[3:2]-->
+    <setting default="None" enable="eq(-11,true)" id="3DT_169" label="32056" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[16:9 (HD)]-->
+    <setting default="None" enable="eq(-12,true)" id="3DT_185" label="32057" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[1.85:1]-->
+    <setting default="None" enable="eq(-13,true)" id="3DT_22" label="32058" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[2.2:1]-->
+    <setting default="None" enable="eq(-14,true)" id="3DT_24" label="32059" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[2.4:1]-->
+</category>
+</settings>

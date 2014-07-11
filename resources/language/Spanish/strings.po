@@ -1,4 +1,4 @@
-﻿# XBMC Media Center language file
+# XBMC Media Center language file
 # Addon Name: AmbiBox
 # Addon id: script.ambibox
 # Addon Provider: AmbiBox
@@ -13,259 +13,268 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#Add-on messages id=#32001 to #32067
+#Add-on messages id=32001 to 32067
 
 msgctxt "#32001"
 msgid "General"
-msgstr ""
+msgstr "General"
 
 msgctxt "#32002"
 msgid "API host"
-msgstr ""
+msgstr "API Presentador"
 
 msgctxt "#32003"
 msgid "API port"
-msgstr ""
+msgstr "API Puerto"
 
 msgctxt "#32004"
 msgid "Notifications"
-msgstr ""
+msgstr "Notificaciones"
 
 msgctxt "#32005"
 msgid "Refresh profiles from AmbiBox (requires exit to AddOns/Services)"
-msgstr ""
+msgstr "Refrescar los perfiles de AmbiBox (Requiere salir de Complementos/Servicios)"
 
 msgctxt "#32006"
 msgid "No profiles configured in Ambibox"
-msgstr ""
+msgstr "No perfiles configurados en AmbiBox"
 
 msgctxt "#32007"
 msgid "AmbiBox installation not found: exiting script"
-msgstr ""
+msgstr "AmbiBox instalacion no encontrado: salir de guion"
 
 msgctxt "#32008"
 msgid "Ambibox could not be started"
-msgstr ""
+msgstr "AmbiBox no puede empezar"
 
 msgctxt "#32009"
 msgid "Start Ambibox with XBMC if not running"
-msgstr ""
+msgstr "Empieze AmbiBox con XBMC si no esta corriendo"
 
 msgctxt "#32010"
 msgid "Profiles"
-msgstr ""
+msgstr "Perfiles"
 
 msgctxt "#32011"
 msgid "Enable default profile"
-msgstr ""
+msgstr "Activar perfil estandar"
 
 msgctxt "#32012"
 msgid "Default profile"
-msgstr ""
+msgstr "Perfil estandar"
 
 msgctxt "#32013"
 msgid "Enable video profile"
-msgstr ""
+msgstr "Activar el  perfil de video"
 
 msgctxt "#32014"
 msgid "Default video profile"
-msgstr ""
+msgstr "Estandar el perfil de video"
 
 msgctxt "#32015"
 msgid "Enable audio profile"
-msgstr ""
+msgstr "Estandar el perfil de audio"
 
 msgctxt "#32016"
 msgid "Audio profile"
-msgstr ""
+msgstr "Perfil de audio"
 
 msgctxt "#32017"
 msgid "Enable XBMCDirect capture"
-msgstr ""
+msgstr "Estandar XBMCDirecto captura"
 
 msgctxt "#32018"
 msgid "Use Auto Aspect Ratio switching"
-msgstr ""
+msgstr "Usar el indice de auto aspecto cambiando"
 
 msgctxt "#32019"
 msgid "On video playback:"
-msgstr ""
+msgstr "En repeticion de video"
 
 msgctxt "#32020"
 msgid "Select profile"
-msgstr ""
+msgstr "Selecionar perfil"
 
 msgctxt "#32021"
 msgid "Backlight off"
-msgstr ""
+msgstr "Luz de atras apagada"
 
 msgctxt "#32022"
 msgid "Backlight on"
-msgstr ""
+msgstr "Luz de atras prendida"
 
 msgctxt "#32023"
 msgid "Show menu when playing"
-msgstr ""
+msgstr "Enseñar el menu mientras juega"
 
 msgctxt "#32024"
 msgid "Do not show menu when playing"
-msgstr ""
+msgstr "No enseñe el menu mientras juega"
 
 msgctxt "#32025"
 msgid "Choose -"
-msgstr ""
+msgstr "Escojer"
 
 msgctxt "#32026"
 msgid "Use default video profile"
-msgstr ""
+msgstr "Usar el video de perfil estandar"
 
 msgctxt "#32027"
 msgid "Auto switch based on AR"
-msgstr ""
+msgstr "Auto cambio basado en AR"
 
 msgctxt "#32028"
 msgid "Show menu of profiles"
-msgstr ""
+msgstr "Enseñar el menu de perfiles"
 
 msgctxt "#32029"
 msgid "Turn off LEDs"
-msgstr ""
+msgstr "Apagar LEDs"
 
 msgctxt "#32030"
 msgid "Connected to AmbiBox"
-msgstr ""
+msgstr "Conectar AmbiBox"
 
 msgctxt "#32031"
 msgid "Failed to connect to AmbiBox"
-msgstr ""
+msgstr "Fallido conectar AmbiBox"
 
 msgctxt "#32032"
 msgid "Ambibox turned off"
-msgstr ""
+msgstr "AmbiBox apagado"
 
 msgctxt "#32033"
 msgid "Set profile %s"
-msgstr ""
+msgstr "Hacer un perfil %s"
 
 msgctxt "#32034"
 msgid "XBMCDirect Success"
-msgstr ""
+msgstr "XBMCDirecto exito"
 
 msgctxt "#32035"
 msgid "XBMCDirect Fail"
-msgstr ""
+msgstr "XBMCDirecto fallo"
 
 msgctxt "#32036"
 msgid "Settings refreshed from Ambibox profiles"
-msgstr ""
+msgstr "Ajustes refrescados de los perfiles AmbiBox"
 
 #Empty strings 32037-39
 
 msgctxt "#32040"
 msgid "Download mediainfo.dll"
-msgstr ""
+msgstr "Descargar mediainfo.dll"
 
 msgctxt "#32041"
 msgid "Screen X resolution (pixels)"
-msgstr ""
+msgstr "Pantalla X resolucion (pixeles)"
 
 msgctxt "#32042"
 msgid "Screen Y resolution (pixels)"
-msgstr ""
+msgstr "Pantalla Y resolucion (pixeles)"
 
 msgctxt "#32043"
 msgid "XBMCDirect capture quality"
-msgstr ""
+msgstr "XBMCDirecto capturar qualidad"
 
 msgctxt "#32044"
 msgid "Low"
-msgstr ""
+msgstr "Bajo"
 
 msgctxt "#32045"
 msgid "Medium"
-msgstr ""
+msgstr "Mediano"
 
 msgctxt "#32046"
 msgid "High"
-msgstr ""
+msgstr "Alto"
 
 msgctxt "#32047"
 msgid "Highest"
-msgstr ""
+msgstr "Altisimo"
 
 #Empty strings 32048-49
 
 msgctxt "#32050"
 msgid "Disable on screensaver"
-msgstr ""
+msgstr "Iutilizar en screensaver"
 
 msgctxt "#32051"
 msgid "Last profile"
-msgstr ""
+msgstr "Ultimo perfil"
 
 msgctxt "#32052"
 msgid "Enable 3D profiles"
-msgstr ""
+msgstr "Activar los perfiles 3D"
 
 msgctxt "#32053"
 msgid "2D Aspect ratio profiles"
-msgstr ""
+msgstr "Perfiles de Aspecto indice 2D"
 
 msgctxt "#32054"
 msgid "4:3 (SD)"
-msgstr ""
+msgstr "4:3 (SD)"
 
 msgctxt "#32055"
 msgid "3:2"
-msgstr ""
+msgstr "3:2"
 
 msgctxt "#32056"
 msgid "16:9 (HD)"
-msgstr ""
+msgstr "16:9 (HD)"
 
 msgctxt "#32057"
 msgid "1.85:1"
-msgstr ""
+msgstr "1,85:1"
 
 msgctxt "#32058"
 msgid "2.2:1"
-msgstr ""
+msgstr "2,2:1"
 
 msgctxt "#32059"
 msgid "2.4:1"
-msgstr ""
+msgstr "2,4:1"
 
 msgctxt "#32060"
 msgid "3D Aspect Ratio Profiles for hSBS"
-msgstr ""
+msgstr "Perfiles de aspecto indice 3D  para hSBS"
 
 msgctxt "#32061"
 msgid "3D Aspect Ratio Profiles for hTAB(hOU)"
-msgstr ""
+msgstr "Perfiles de aspecto indice 3D para hTAB(hOU)"
 
 msgctxt "#32062"
 msgid "mediainfo.dll already installed on system"
-msgstr ""
+msgstr "mediainfo.dll esta instalado en el sistema"
 
 msgctxt "#32063"
 msgid "This add-on will use MediaInfo library\nCopyright (c) 2002-2014 MediaArea.net SARL.\nDownload?"
-msgstr ""
+msgstr "Este complemento utilizará MediaInfo librería \nDerechos de Autor © 2002-2014 MediaArea.net SARL.\nDescarga ahora?"
 
 msgctxt "#32064"
 msgid "Downloading %s bytes %s"
-msgstr ""
+msgstr "Descargando %s bytes %s"
 
 msgctxt "#32065"
 msgid "Download failed"
-msgstr ""
+msgstr "El descargo fallo"
 
 msgctxt "#32066"
 msgid "Download canceled"
-msgstr ""
+msgstr "El descargo se cancelo"
 
 msgctxt "#32067"
 msgid "Download succeeded"
-msgstr ""
+msgstr "El descargo fue un exito"
 
+msgctxt "#32068"
+msgid "Throttle (100=full framerate, 1=1fps)"
+msgstr "Acelerador (100 = frecuencia de imagen máxima, 1 = 1 fotograma por segundo)"
 
+msgctxt "#32069"
+msgid "LEDs On"
+msgstr "LEDs encendidas"
 
+msgctxt "#32070"
+msgid "LEDs Off"
+msgstr "LEDs apagadas "
