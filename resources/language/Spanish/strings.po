@@ -266,3 +266,15 @@ msgstr "El descargo se cancelo"
 msgctxt "#32067"
 msgid "Download succeeded"
 msgstr "El descargo fue un exito"
+
+msgctxt "#32068"
+msgid "Throttle (100=full framerate, 1=1fps)"
+msgstr "Acelerador (100 = frecuencia de imagen máxima, 1 = 1 fotograma por segundo)"
+
+msgctxt "#32069"
+msgid "LEDs On"
+msgstr "LEDs encendidas"
+
+msgctxt "#32070"
+msgid "LEDs Off"
+msgstr "LEDs apagadas "

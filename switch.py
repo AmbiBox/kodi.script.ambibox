@@ -58,14 +58,14 @@ try:
             abx.turnOn()
             abx.unlock()
             __settings__.setSetting(id='manual_switch', value='on')
-            notification('LEDs On')
+            notification(__language__(32069))  # @[LEDs On] 
     if str_cmd == 'off':
         if abx.connect() == 0:
             abx.lock()
             abx.turnOff()
             abx.unlock()
             __settings__.setSetting(id='manual_switch', value='off')
-            notification('LEDs Off')
+            notification(__language__(32070))  # @[LEDs Off] 
 except Exception, e:
     pass
 
