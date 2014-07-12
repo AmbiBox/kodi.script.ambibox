@@ -154,6 +154,7 @@ def getStereoscopicMode():
     return ret
 """
 
+
 def process_keyboard_settings():
     if __settings__.getSetting('key_use') == 'false':
         return
@@ -172,7 +173,7 @@ def process_keyboard_settings():
         fo = open(keyxmlfile, 'r')
         xml = fo.read()
         fo.close()
-        s1 = re.search(re.escape(set_off_str),xml)
+        s1 = re.search(re.escape(set_off_str), xml)
         s2 = re.search(re.escape(set_on_str), xml)
         if s1 is not None and s2 is not None:
             return
@@ -190,12 +191,12 @@ def process_keyboard_settings():
                 if matchcmd and matchkey:  # del cmd and change key to cmd
                     matchedcmd = matchcmd.group()
                     matchedkey = matchkey.group()
-                    if matchedcmd <> matchedkey:
+                    if matchedcmd != matchedkey:
                         n2 = re.sub(mcmd, '', xml_global)
                         n1 = re.sub(mkey, mstr, n2)
                     else:
                         n1 = xml_global
-                elif matchcmd and not matchkey: # change cmd to new key
+                elif matchcmd and not matchkey:  # change cmd to new key
                     # matchedcmd = matchcmd.group()
                     n1 = re.sub(mcmd, mstr, xml_global)
                 elif matchkey and not matchcmd:  # change key to cmd
@@ -230,6 +231,7 @@ def process_keyboard_settings():
         fo.write(newglobal)
         fo.close()
 
+
 def translate_key_settings(key_type):
     __settings = xbmcaddon.Addon('script.ambibox')
     checks = ['shift', 'ctrl', 'alt']
@@ -247,6 +249,7 @@ def translate_key_settings(key_type):
         key2 = key
     ret = ['<%s %s\">' % (key2, mod), '</%s>' % key2]
     return ret
+
 
 class ProfileManager():
     LIGHTS_ON = True
@@ -605,12 +608,11 @@ class CapturePlayer(xbmc.Player):
         pass
 
     def onPlayBackResumed(self):
-        if self.getPlayingFile() <> self.playing_file:
+        if self.getPlayingFile() != self.playing_file:
             if self.xd:
                 if self.xd.is_running:
                     self.kill_XBMCDirect()
             self.onPlayBackStarted()
-
 
     def onPlayBackStarted(self):
         __settings = xbmcaddon.Addon("script.ambibox")
@@ -649,7 +651,7 @@ class CapturePlayer(xbmc.Player):
                     vp_ar = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
                     try:
                         infos[3] = float(vp_ar)
-                    except TypeError, e:
+                    except TypeError:
                         infos[3] = float(0)
 
                 # Capture Method
@@ -688,7 +690,7 @@ class CapturePlayer(xbmc.Player):
                     if xxx[0:3] != 'pvr' and not mi_called:  # Cannot use for LiveTV stream
                         try:
                             infos = mediax().getInfos(xxx)
-                        except Exception, e:
+                        except:
                             infos = [0, 0, 1, 0]
 
                 if (infos[0] == 0) or (infos[1] == 0):
@@ -776,7 +778,7 @@ class CapturePlayer(xbmc.Player):
     def onPlayBackEnded(self):
         __settings = xbmcaddon.Addon("script.ambibox")
         if ambibox.connect() == 0:
-             pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
+            pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
         if __settings.getSetting("directXBMC_enable") == 'true':
             self.kill_XBMCDirect()
         self.onPBSfired = False
@@ -952,7 +954,7 @@ class XBMCDirectMP (multiprocessing.Process):
                         sfps = float(xbmc.getInfoLabel('System.FPS'))  # wait for 50 frames before getting fps
                         evalframenum = int(sfps * 10.0)  # evaluate how much to sleep over first 10s of video
                     if counter == evalframenum:
-                        dfps = 1 + (sfps - (1/tfactor)) * tfactor # calculates a desired fps based on throttle val
+                        dfps = 1 + (sfps - (1/tfactor)) * tfactor  # calculates a desired fps based on throttle val
                         sleeptime = int(0.95 * ((1000.0/dfps) - (ctime/(1000.0 * counter))))  # 95% of calc sleep
                         if sleeptime < 10:
                             sleeptime = 10
@@ -979,6 +981,7 @@ class XBMCDirectMP (multiprocessing.Process):
             if not self.exit_event.is_set():
                 info("Error retrieving video file dimensions")
 
+
 class Timer(object):
     def __init__(self, verbose=False):
         self.verbose = verbose
@@ -995,6 +998,7 @@ class Timer(object):
         self.msecs = int(self.microsecs/1000.0)
         if self.verbose:
             print 'elapsed time: %f ms' % self.msecs
+
 
 def main():
     global ambibox
