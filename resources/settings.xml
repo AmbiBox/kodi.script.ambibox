@@ -51,4 +51,18 @@
     <setting default="None" enable="eq(-13,true)" id="3DT_22" label="32058" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[2.2:1]-->
     <setting default="None" enable="eq(-14,true)" id="3DT_24" label="32059" subsetting="true" type="labelenum" values="None|HTPC|4:3|2.40:1|ColorMusic" /><!--[2.4:1]-->
 </category>
+<category label="32071"><!--[Keyboard]-->
+    <setting label="32072" type="lsep" /><!--[Requires XBMC restart to effect changes!]-->
+    <setting default="false" id="key_use" label="32073" type="bool" /><!--[Use Hotkeys Below?]-->
+    <setting label="32069" type="lsep" /><!--[LEDs On]-->
+    <setting default="false" enable="eq(-2,true)" id="key_on_shift" label="32074" type="bool" /><!--[Shift]-->
+    <setting default="true" enable="eq(-3,true)" id="key_on_ctrl" label="32075" type="bool" /><!--[Control]-->
+    <setting default="false" enable="eq(-4,true)" id="key_on_alt" label="32076" type="bool" /><!--[Alt/Option]-->
+    <setting default="f7" enable="eq(-5,true)" id="key_on_str" label="32077" type="text" /><!--[Key to Use]-->
+    <setting label="32070" type="lsep" /><!--[LEDs Off]-->
+    <setting default="false" enable="eq(-7,true)" id="key_off_shift" label="32074" type="bool" /><!--[Shift]-->
+    <setting default="true" enable="eq(-8,true)" id="key_off_ctrl" label="32075" type="bool" /><!--[Control]-->
+    <setting default="false" enable="eq(-9,true)" id="key_off_alt" label="32076" type="bool" /><!--[Alt/Option]-->
+    <setting default="f8" enable="eq(-10,true)" id="key_off_str" label="32077" type="text" /><!--[Key to Use]-->
+</category>
 </settings>

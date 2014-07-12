@@ -36,7 +36,7 @@ screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
 user32 = None
 
-"""
+
 debug = True
 remote = False
 if debug:
@@ -48,7 +48,7 @@ if debug:
         sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
         import pydevd
         pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
-"""
+
 
 # Modules XBMC
 import xbmc
@@ -154,6 +154,99 @@ def getStereoscopicMode():
     return ret
 """
 
+def process_keyboard_settings():
+    if __settings__.getSetting('key_use') == 'false':
+        return
+    set_off_tpl = translate_key_settings('key_off')
+    set_on_tpl = translate_key_settings('key_on')
+    set_off_str = set_off_tpl[0] + r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, off)'\
+                  + set_off_tpl[1]
+    set_on_str = set_on_tpl[0] + r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, on)'\
+                 + set_on_tpl[1]
+    set_off_search_key = re.escape(set_off_tpl[0]) + r'.+?' + re.escape(set_off_tpl[1])
+    set_on_search_key = re.escape(set_on_tpl[0]) + r'.+?' + re.escape(set_on_tpl[1])
+    set_off_search_cmd = r'<.+?>(\n)*XBMC\.RunScript\(special:\/\/home\\addons\\script\.ambibox\\switch\.py, off\)[\S\s]*?<\/.+?>'
+    set_on_search_cmd = r'<.+?>(\n)*XBMC\.RunScript\(special:\/\/home\\addons\\script\.ambibox\\switch\.py, on\)[\S\s]*?<\/.+?>'
+    keyxmlfile = xbmc.translatePath('special://profile\keymaps\keyboard.xml')
+    if xbmcvfs.exists(keyxmlfile):
+        fo = open(keyxmlfile, 'r')
+        xml = fo.read()
+        fo.close()
+        s1 = re.search(re.escape(set_off_str),xml)
+        s2 = re.search(re.escape(set_on_str), xml)
+        if s1 is not None and s2 is not None:
+            return
+        newglobal = ''
+        xml_global_match = re.search(r'<global>([\S\s]+)*?<\/global>\n', xml)
+        if xml_global_match:
+            xml_global = xml_global_match.group()
+            mmkeys = [[set_off_search_cmd, set_off_search_key, set_off_str], [set_on_search_cmd, set_on_search_key, set_on_str]]
+            for mmkey in mmkeys:
+                mcmd = mmkey[0]
+                mkey = mmkey[1]
+                mstr = mmkey[2]
+                matchcmd = re.search(mcmd, xml_global)
+                matchkey = re.search(mkey, xml_global)
+                if matchcmd and matchkey:  # del cmd and change key to cmd
+                    matchedcmd = matchcmd.group()
+                    matchedkey = matchkey.group()
+                    if matchedcmd <> matchedkey:
+                        n2 = re.sub(mcmd, '', xml_global)
+                        n1 = re.sub(mkey, mstr, n2)
+                    else:
+                        n1 = xml_global
+                elif matchcmd and not matchkey: # change cmd to new key
+                    # matchedcmd = matchcmd.group()
+                    n1 = re.sub(mcmd, mstr, xml_global)
+                elif matchkey and not matchcmd:  # change key to cmd
+                    # matchedkey = matchkey.group()
+                    n1 = re.sub(mkey, mstr, xml_global)
+                else:  # insert after global keyboard
+                    x = r'<global>[\s\S]*<keyboard>' + '\n'
+                    n1 = re.sub(x, '<global>\n    <keyboard>\n     ' + mstr + '\n', xml_global)
+                xml_global = n1
+            n = re.sub(re.escape(xml_global_match.group()), xml_global, xml)
+            n2 = ''
+            for x in n:
+                if ord(x) == 7:
+                    n2 += r'\a'
+                else:
+                    n2 += x
+            xml = n2
+        else:  # Create global keyboard and write strings
+            newglobal = '<global>\n  <keyboard>\n    ' + set_on_str + '\n' + set_off_str + '\n'
+            newglobal += '  </keyboard>\n</global>\n'
+        if xbmcvfs.exists(keyxmlfile + '.bak'):
+            xbmcvfs.delete(keyxmlfile + '.bak')
+        xbmcvfs.rename(keyxmlfile, keyxmlfile + '.bak')
+        fo = open(keyxmlfile, 'w')
+        fo.write(newglobal + xml)
+        fo.close()
+    else:  # create new keyboard.xml
+        fo = open(keyxmlfile, 'w')
+        newglobal = r'<?xml version="1.0" encoding="UTF-8"?>' + '\n<keymap>\n'
+        newglobal += '  <global>\n    <keyboard>\n      ' + set_on_str + '\n      ' + set_off_str + '\n'
+        newglobal += '    </keyboard>\n  </global>\n</keymap>'
+        fo.write(newglobal)
+        fo.close()
+
+def translate_key_settings(key_type):
+    __settings = xbmcaddon.Addon('script.ambibox')
+    checks = ['shift', 'ctrl', 'alt']
+    mod = 'mod="'
+    for check in checks:
+        if __settings.getSetting(key_type + '_' + check) == 'true':
+            if mod == 'mod="':
+                mod += check
+            else:
+                mod += ',' + check
+    key = (__settings.getSetting(key_type + '_str')[0:2]).lower()
+    if key[0:1] != 'f':
+        key2 = key[0:1]
+    else:
+        key2 = key
+    ret = ['<%s %s\">' % (key2, mod), '</%s>' % key2]
+    return ret
 
 class ProfileManager():
     LIGHTS_ON = True
@@ -484,6 +577,7 @@ class CapturePlayer(xbmc.Player):
         self.onPBSfired = False
         self.xd = None
         self.XBMCDirect_Event = None
+        self.playing_file = ''
 
     def showmenu(self):
         menu = ambibox.getProfiles()
@@ -507,6 +601,17 @@ class CapturePlayer(xbmc.Player):
                 ambibox.unlock()
             mquit = True
 
+    def onPlayBackPaused(self):
+        pass
+
+    def onPlayBackResumed(self):
+        if self.getPlayingFile() <> self.playing_file:
+            if self.xd:
+                if self.xd.is_running:
+                    self.kill_XBMCDirect()
+            self.onPlayBackStarted()
+
+
     def onPlayBackStarted(self):
         __settings = xbmcaddon.Addon("script.ambibox")
         ambibox.connect()
@@ -515,11 +620,10 @@ class CapturePlayer(xbmc.Player):
             xbmc.sleep(500)
         if self.isPlayingAudio():
             pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
-
+        self.playing_file = self.getPlayingFile()
         if self.isPlayingVideo():
             infos = [0, 0, 1, 0]
             mi_called = False
-            xxx = ''
             if __settings.getSetting('video_choice') == '1' or __settings.getSetting('directXBMC_enable') == 'true':
                 # mode = Autoswitch or XBMC_Direct
                 # Get aspect ratio
@@ -527,12 +631,15 @@ class CapturePlayer(xbmc.Player):
 
                 #MediaInfo Method
                 if ((infos[3] == 0) or (0.95 < infos[3] < 1.05)) and mediax is not None:
-                    xxx = self.getPlayingFile()
-                    if xxx[0:2] != 'pvr':  # Cannot use for LiveTV stream
-                        try:
-                            infos = mediax().getInfos(xxx)
-                            mi_called = True
-                        except Exception, e:
+
+                    if self.playing_file[0:2] != 'pvr':  # Cannot use for LiveTV stream
+                        if os.path.exists(self.playing_file):
+                            try:
+                                infos = mediax().getInfos(self.playing_file)
+                                mi_called = True
+                            except:
+                                infos = [0, 0, 1, 0]
+                        else:
                             infos = [0, 0, 1, 0]
 
                 #Info Label Method
@@ -615,15 +722,13 @@ class CapturePlayer(xbmc.Player):
                 elif stereoMode == 'left_right':
                     vidfmt = 'SBS'
                 else:
-                    if xxx == '':
-                        xxx = self.getPlayingFile()
-                    m = self.re3D.search(xxx)
+                    m = self.re3D.search(self.playing_file)
                     if m and __settings.getSetting('3D_enable'):
-                        n = self.reTAB.search(xxx)
+                        n = self.reTAB.search(self.playing_file)
                         if n:
                             vidfmt = "TAB"
                         else:
-                            n = self.reSBS.search(xxx)
+                            n = self.reSBS.search(self.playing_file)
                             if n:
                                 vidfmt = "SBS"
                             else:
@@ -724,6 +829,7 @@ class XbmcMonitor(xbmc.Monitor):
         elif pm.AmbiboxRunning is True:
             pm.chkProfileSettings()
         chkMediaInfo()
+        process_keyboard_settings()
 
 
 class XBMCDirectMP (multiprocessing.Process):
@@ -735,9 +841,9 @@ class XBMCDirectMP (multiprocessing.Process):
         self.inDataMap = None
         self.exit_event = multiprocessing.Event()
         self.throttle = throttle
+        self.is_running = False
 
     def start(self):
-        self.running = True
         multiprocessing.Process.start(self)
 
     def stop(self):
@@ -746,10 +852,10 @@ class XBMCDirectMP (multiprocessing.Process):
 
     def close(self):
         del self
-        pass
 
     def run(self):
         multiprocessing.Process.run(self)
+        self.is_running = True
         capture = xbmc.RenderCapture()
         tw = capture.getHeight()
         th = capture.getWidth()
@@ -862,11 +968,14 @@ class XBMCDirectMP (multiprocessing.Process):
                      % (sleeptime, pcnt_sleep))
                 self.inDataMap.close()
                 self.inDataMap = None
+                self.is_running = False
             else:
+                self.is_running = False
                 if not self.exit_event.is_set():
                     info('Capture failed')
                     notification(__language__(32035))  # @[XBMCDirect Fail] 
         else:
+            self.is_running = False
             if not self.exit_event.is_set():
                 info("Error retrieving video file dimensions")
 
@@ -891,6 +1000,7 @@ def main():
     global ambibox
     monitor = XbmcMonitor()
     pm.start()
+    process_keyboard_settings()
     if ambibox.connect() == 0:
         notification(__language__(32030))  # @[Connected to AmbiBox] 
         info('Started - ver %s' % __version__)

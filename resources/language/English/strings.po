@@ -1,7 +1,7 @@
 # XBMC Media Center language file
-# Addon Name: AmbiBox
-# Addon id: script.ambibox
-# Addon Provider: Ambibox/KenV99
+# Addon Name: ???
+# Addon id: ???
+# Addon Provider: ???
 msgid ""
 msgstr ""
 "Project-Id-Version: XBMC Addons\n"
@@ -12,7 +12,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en\n""Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#Add-on messages id=32001 to 32070
+#Add-on messages id=32001 to 32077
 
 msgctxt "#32001"
 msgid "General"
@@ -276,5 +276,33 @@ msgstr ""
 
 msgctxt "#32070"
 msgid "LEDs Off"
+msgstr ""
+
+msgctxt "#32071"
+msgid "Keyboard"
+msgstr ""
+
+msgctxt "#32072"
+msgid "Requires XBMC restart to effect changes!"
+msgstr ""
+
+msgctxt "#32073"
+msgid "Use Hotkeys Below?"
+msgstr ""
+
+msgctxt "#32074"
+msgid "Shift"
+msgstr ""
+
+msgctxt "#32075"
+msgid "Control"
+msgstr ""
+
+msgctxt "#32076"
+msgid "Alt/Option"
+msgstr ""
+
+msgctxt "#32077"
+msgid "Key to Use"
 msgstr ""
 

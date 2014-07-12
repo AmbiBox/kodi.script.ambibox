@@ -277,4 +277,33 @@ msgstr "LEDs encendidas"
 
 msgctxt "#32070"
 msgid "LEDs Off"
-msgstr "LEDs apagadas "
+msgstr "LEDs apagadas"
+
+msgctxt "#32071"
+msgid "Keyboard"
+msgstr "Teclado"
+
+msgctxt "#32072"
+msgid "Requires XBMC restart to effect changes!"
+msgstr "Requiere reinicio XBMC para efectuar cambios!"
+
+msgctxt "#32073"
+msgid "Use Hotkeys Below?"
+msgstr "Use teclas de acceso rápido de abajo?"
+
+msgctxt "#32074"
+msgid "Shift"
+msgstr "Cambio"
+
+msgctxt "#32075"
+msgid "Control"
+msgstr "Control "
+
+msgctxt "#32076"
+msgid "Alt/Option"
+msgstr "Alt / Opción"
+
+msgctxt "#32077"
+msgid "Key to Use"
+msgstr "La clave para utilizar"
+

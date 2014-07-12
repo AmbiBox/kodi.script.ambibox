@@ -27,6 +27,7 @@ __addon__ = xbmcaddon.Addon('script.ambibox')
 __cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
+__language__ = __settings__.getLocalizedString
 sys.path.append(__resource__)
 
 from ambibox import AmbiBox
