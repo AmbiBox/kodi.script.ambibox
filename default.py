@@ -37,7 +37,7 @@ screeny = user32.GetSystemMetrics(1)
 user32 = None
 
 """
-debug = True
+debug = False
 remote = False
 if debug:
     if remote:
@@ -177,8 +177,8 @@ def process_keyboard_settings():
         s2 = re.search(re.escape(set_on_str), xml)
         if s1 is not None and s2 is not None:
             return
-        newglobal = ''
-        xml_global_match = re.search(r'<global>([\S\s]+)*?<\/global>\n', xml)
+        globalsearch = re.compile(r'<global>\n.+?<keyboard>\n.+?<\/keyboard>\n.+?<\/global>\n', flags=re.DOTALL)
+        xml_global_match = globalsearch.search(xml)
         if xml_global_match:
             xml_global = xml_global_match.group()
             mmkeys = [[set_off_search_cmd, set_off_search_key, set_off_str], [set_on_search_cmd, set_on_search_key, set_on_str]]
@@ -193,40 +193,37 @@ def process_keyboard_settings():
                     matchedkey = matchkey.group()
                     if matchedcmd != matchedkey:
                         n2 = re.sub(mcmd, '', xml_global)
-                        n1 = re.sub(mkey, mstr, n2)
+                        n1 = re.sub(mkey, mstr.encode('string_escape'), n2)
                     else:
                         n1 = xml_global
                 elif matchcmd and not matchkey:  # change cmd to new key
-                    # matchedcmd = matchcmd.group()
-                    n1 = re.sub(mcmd, mstr, xml_global)
+                    n1 = re.sub(mcmd, mstr.encode('string_escape'), xml_global)
                 elif matchkey and not matchcmd:  # change key to cmd
                     # matchedkey = matchkey.group()
-                    n1 = re.sub(mkey, mstr, xml_global)
+                    n1 = re.sub(mkey, mstr.encode('string_escape'), xml_global)
                 else:  # insert after global keyboard
                     x = r'<global>[\s\S]*<keyboard>' + '\n'
-                    n1 = re.sub(x, '<global>\n    <keyboard>\n     ' + mstr + '\n', xml_global)
+                    n1 = re.sub(x, '<global>\n    <keyboard>\n      ' + mstr.encode('string_escape') + '\n', xml_global)
                 xml_global = n1
-            n = re.sub(re.escape(xml_global_match.group()), xml_global, xml)
-            n2 = ''
-            for x in n:
-                if ord(x) == 7:
-                    n2 += r'\a'
-                else:
-                    n2 += x
-            xml = n2
+            n = re.sub(re.escape(xml_global_match.group()), xml_global.encode('string_escape'), xml)
+            xml = n
         else:  # Create global keyboard and write strings
-            newglobal = '<global>\n  <keyboard>\n    ' + set_on_str + '\n' + set_off_str + '\n'
-            newglobal += '  </keyboard>\n</global>\n'
-        if xbmcvfs.exists(keyxmlfile + '.bak'):
-            xbmcvfs.delete(keyxmlfile + '.bak')
-        xbmcvfs.rename(keyxmlfile, keyxmlfile + '.bak')
+            newglobal = '<keymap>\n  <global>\n    <keyboard>\n      ' + set_on_str +\
+                        '\n      ' + set_off_str + '\n' + '    </keyboard>\n  </global>\n'
+            n = re.sub(re.escape('<keymap>\n'), newglobal.encode('string_escape'), xml)
+            xml = n
+        bakfn = keyxmlfile + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak'
+        if xbmcvfs.exists(bakfn):
+            xbmcvfs.delete(bakfn)
+        xbmcvfs.rename(keyxmlfile, bakfn)
         fo = open(keyxmlfile, 'w')
-        fo.write(newglobal + xml)
+        fo.write(xml)
         fo.close()
     else:  # create new keyboard.xml
         fo = open(keyxmlfile, 'w')
         newglobal = r'<?xml version="1.0" encoding="UTF-8"?>' + '\n<keymap>\n'
-        newglobal += '  <global>\n    <keyboard>\n      ' + set_on_str + '\n      ' + set_off_str + '\n'
+        newglobal += '  <global>\n    <keyboard>\n      ' + set_on_str.encode('string_escape') + '\n      '\
+                     + set_off_str.encode('string_escape') + '\n'
         newglobal += '    </keyboard>\n  </global>\n</keymap>'
         fo.write(newglobal)
         fo.close()
@@ -234,7 +231,7 @@ def process_keyboard_settings():
 
 def translate_key_settings(key_type):
     __settings = xbmcaddon.Addon('script.ambibox')
-    checks = ['shift', 'ctrl', 'alt']
+    checks = ['ctrl', 'shift', 'alt']
     mod = 'mod="'
     for check in checks:
         if __settings.getSetting(key_type + '_' + check) == 'true':
@@ -246,7 +243,10 @@ def translate_key_settings(key_type):
     if key[0:1] != 'f':
         key2 = key[0:1]
     else:
-        key2 = key
+        if key[1] in ['1', '2', '3', '4', '5', '6', '7', '8', '9']:
+            key2 = key
+        else:
+            key2 = 'f'
     ret = ['<%s %s\">' % (key2, mod), '</%s>' % key2]
     return ret
 
@@ -259,6 +259,7 @@ class ProfileManager():
         self.AmbiboxRunning = False
         self.currentProfile = ""
         self._ABP = None
+        self._pfl_xd = dict()
 
     @property
     def ABP(self):
@@ -292,6 +293,35 @@ class ProfileManager():
             ret = -1
         CloseKey(aReg)
         return ret
+
+    def current_profile_is_XBMCDirect(self):
+        return self._pfl_xd[self.currentProfile]
+
+    def get_profile_types_from_reg(self):
+        aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
+        try:
+            key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
+            profileCount = QueryValueEx(key, 'ProfilesCount')
+            if type(profileCount[0]) is int:
+                count = int(profileCount[0])
+            else:
+                count = 0
+            for i in xrange(0, count):
+                key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
+                pname = QueryValueEx(key, 'ProfileName_%s' % str(i))
+                key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles\%s' % str(pname[0]))
+                backlight_plugin_name = QueryValueEx(key, 'BacklightPluginName')
+                grabber = QueryValueEx(key, 'Grabber')
+                if backlight_plugin_name[0] == '' and grabber[0] == 8:
+                    self._pfl_xd[str(pname[0])] = True
+                else:
+                    self._pfl_xd[str(pname[0])] = False
+            CloseKey(aReg)
+        except WindowsError or EnvironmentError, e:
+            info("Error reading profile types from registry")
+        except Exception, e:
+            pass
+        return
 
     def chkAmbiboxRunning(self):
         proclist = []
@@ -362,7 +392,6 @@ class ProfileManager():
         self.chkAmbiboxRunning()
         if self.AmbiboxRunning:
             self.lightSwitch(self.LIGHTS_OFF)
-
         if (pcnt >= 0) and (__settings.getSetting('start_ambibox')) == 'true':
             if self.AmbiboxRunning is False:
                 success = self.startAmbibox()
@@ -381,6 +410,7 @@ class ProfileManager():
             if self.AmbiboxRunning:
                 self.updateprofilesettings()
                 self.chkProfileSettings()
+                self.get_profile_types_from_reg()
         self.setProfile(__settings.getSetting('default_enable'), __settings.getSetting('default_profile'))
 
     @staticmethod
@@ -475,7 +505,7 @@ class ProfileManager():
         if ambibox.connect() == 0:
             ambibox.lock()
             if enable == 'true' and profile != 'None':
-                notification(__language__(32033) % profile)  # @[Set profile %s] 
+                notification(__language__(32033) % profile)  # @[Set profile %s]
                 ambibox.setProfile(profile)
             else:
                 notification(__language__(32032))  # @[Ambibox turned off] 
@@ -626,92 +656,46 @@ class CapturePlayer(xbmc.Player):
         if self.isPlayingVideo():
             infos = [0, 0, 1, 0]
             mi_called = False
-            if __settings.getSetting('video_choice') == '1' or __settings.getSetting('directXBMC_enable') == 'true':
-                # mode = Autoswitch or XBMC_Direct
-                # Get aspect ratio
-                # First try infoLabels, then Capture, then MediaInfo. Default to screen dimensions.
+            # Get aspect ratio
+            # First try MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
 
-                #MediaInfo Method
-                if ((infos[3] == 0) or (0.95 < infos[3] < 1.05)) and mediax is not None:
-
-                    if self.playing_file[0:2] != 'pvr':  # Cannot use for LiveTV stream
-                        if os.path.exists(self.playing_file):
-                            try:
-                                infos = mediax().getInfos(self.playing_file)
-                                mi_called = True
-                            except:
-                                infos = [0, 0, 1, 0]
-                        else:
-                            infos = [0, 0, 1, 0]
-
-                #Info Label Method
-                if infos[3] == 0:
-                    while xbmc.getInfoLabel("VideoPlayer.VideoAspect") is None:
-                        pass
-                    vp_ar = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
-                    try:
-                        infos[3] = float(vp_ar)
-                    except TypeError:
-                        infos[3] = float(0)
-
-                # Capture Method
-                if infos[3] == 0:
-                    rc = xbmc.RenderCapture()
-                    infos[3] = rc.getAspectRatio()
-
-                # Fallback Method
-                if (0.95 < infos[3] < 1.05) or infos[3] == 0:  # fallback to screen aspect ratio
-                    infos[3] = float(screenx)/float(screeny)
-
-            if __settings.getSetting('directXBMC_enable') == 'true':
-                # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
-                # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
-
-                # InfoLabel Method
-                vp_res = xbmc.getInfoLabel("VideoPlayer.VideoResolution")
-                if str(vp_res).lower() == '4k':
-                    vp_res_int = 2160
-                else:
-                    try:
-                        vp_res_int = int(vp_res)
-                    except ValueError or TypeError:
-                        vp_res_int = 0
-                if vp_res_int != 0 and infos[3] != 0:
-                    if infos[3] > 1.7778:
-                        infos[0] = int(vp_res_int * 1.7778)
-                        infos[1] = int(infos[0] / infos[3])
-                    else:
-                        infos[0] = int(infos[3] * vp_res_int)
-                        infos[1] = vp_res_int
-
-                #MediaInfo Method
-                if ((infos[0] == 0) or (infos[1] == 0)) and mediax is not None:
-                    xxx = self.getPlayingFile()
-                    if xxx[0:3] != 'pvr' and not mi_called:  # Cannot use for LiveTV stream
+            #MediaInfo Method
+            if mediax is not None:
+                if self.playing_file[0:3] != 'pvr':  # Cannot use for LiveTV stream
+                    if xbmcvfs.exists(self.playing_file):
                         try:
-                            infos = mediax().getInfos(xxx)
+                            infos = mediax().getInfos(self.playing_file)
+                            mi_called = True
                         except:
                             infos = [0, 0, 1, 0]
+                    else:
+                        infos = [0, 0, 1, 0]
 
-                if (infos[0] == 0) or (infos[1] == 0):
-                    infos[0] = screenx
-                    infos[1] = screeny
+            #Info Label Method
+            if infos[3] == 0:
+                while xbmc.getInfoLabel("VideoPlayer.VideoAspect") is None:
+                    pass
+                vp_ar = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
+                try:
+                    infos[3] = float(vp_ar)
+                except TypeError:
+                    infos[3] = float(0)
+            else:
+                info('Aspect ratio determined by mediainfo.dll')
 
-                # Set quality
+            # Capture Method
+            if infos[3] == 0:
+                rc = xbmc.RenderCapture()
+                infos[3] = rc.getAspectRatio()
+            else:
+                info('Aspect ratio determined by InfoLabel')
 
-                quality = __settings.getSetting('directXBMC_quality')
-                minq = 32
-                maxq = infos[1]
-                if quality == '0':
-                    infos[1] = minq
-                elif quality == '1':
-                    infos[1] = int(minq + ((maxq - minq)/3))
-                elif quality == '2':
-                    infos[1] = int(minq + (2*(maxq - minq)/3))
-                else:
-                    if infos[1] == 0:
-                        infos[1] = screeny
-                infos[0] = int(infos[1]*infos[3])
+            # Fallback Method
+            if (0.95 < infos[3] < 1.05) or infos[3] == 0:  # fallback to screen aspect ratio
+                infos[3] = float(screenx)/float(screeny)
+                info('Aspect ratio not able to be determined - usng screen AR')
+            else:
+                info('Aspect ratio determined by XBMC.Capture()')
 
             if __settings.getSetting('3D_enable') == 'true':
                 # Get Stereoscopic Information
@@ -756,7 +740,7 @@ class CapturePlayer(xbmc.Player):
                 DAR = infos[3]
                 if DAR != 0:
                     pm.SetAbxProfile(DAR, vidfmt)
-                    info('Autoswitch on AR')
+                    info('Autoswitched on AR')
                 else:
                     info("Error retrieving DAR from video file")
             elif videomode == 2:   # Show menu
@@ -767,8 +751,57 @@ class CapturePlayer(xbmc.Player):
                 pm.lightSwitch(pm.LIGHTS_OFF)
 
         # Start separate process for XBMC Capture
+            if pm.current_profile_is_XBMCDirect():
+                # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
+                # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
 
-            if __settings.getSetting("directXBMC_enable") == 'true':
+                if ((infos[0] == 0) or (infos[1] == 0)) and (mediax is not None) and not mi_called:
+                    xxx = self.getPlayingFile()
+                    if xxx[0:3] != 'pvr':  # Cannot use for LiveTV stream
+                        if xbmcvfs.exists(xxx):
+                            try:
+                                infos = mediax().getInfos(xxx)
+                            except:
+                                infos = [0, 0, 1, 0]
+
+                # InfoLabel Method
+                if (infos[0] == 0) or (infos[1] == 0):
+                    vp_res = xbmc.getInfoLabel("VideoPlayer.VideoResolution")
+                    if str(vp_res).lower() == '4k':
+                        vp_res_int = 2160
+                    else:
+                        try:
+                            vp_res_int = int(vp_res)
+                        except ValueError or TypeError:
+                            vp_res_int = 0
+                    if vp_res_int != 0 and infos[3] != 0:
+                        if infos[3] > 1.7778:
+                            infos[0] = int(vp_res_int * 1.7778)
+                            infos[1] = int(infos[0] / infos[3])
+                        else:
+                            infos[0] = int(infos[3] * vp_res_int)
+                            infos[1] = vp_res_int
+                # Fallback
+                if (infos[0] == 0) or (infos[1] == 0):
+                    infos[0] = screenx
+                    infos[1] = screeny
+
+                # Set quality
+
+                quality = __settings.getSetting('directXBMC_quality')
+                minq = 32
+                maxq = infos[1]
+                if quality == '0':
+                    infos[1] = minq
+                elif quality == '1':
+                    infos[1] = int(minq + ((maxq - minq)/3))
+                elif quality == '2':
+                    infos[1] = int(minq + (2*(maxq - minq)/3))
+                else:
+                    if infos[1] == 0:
+                        infos[1] = screeny
+                infos[0] = int(infos[1]*infos[3])
+
                 if self.xd is not None:
                     self.kill_XBMCDirect()
                 throttle = float(__settings.getSetting('throttle'))
@@ -776,11 +809,11 @@ class CapturePlayer(xbmc.Player):
                 self.xd.run()
 
     def onPlayBackEnded(self):
+        if pm.current_profile_is_XBMCDirect():
+            self.kill_XBMCDirect()
         __settings = xbmcaddon.Addon("script.ambibox")
         if ambibox.connect() == 0:
             pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
-        if __settings.getSetting("directXBMC_enable") == 'true':
-            self.kill_XBMCDirect()
         self.onPBSfired = False
 
     def kill_XBMCDirect(self):
@@ -830,6 +863,7 @@ class XbmcMonitor(xbmc.Monitor):
             pm.start()
         elif pm.AmbiboxRunning is True:
             pm.chkProfileSettings()
+            pm.get_profile_types_from_reg()
         chkMediaInfo()
         process_keyboard_settings()
 
@@ -923,7 +957,7 @@ class XBMCDirectMP (multiprocessing.Process):
                 tfactor = self.throttle/100.0
                 sleeptime = 10
                 sfps = xbmc.getInfoLabel('System.FPS')
-                evalframenum = 1000
+                evalframenum = -1
                 while not self.exit_event.is_set():
                     with Timer() as t:
                         capture.waitForCaptureStateChangeEvent(500)
@@ -957,17 +991,21 @@ class XBMCDirectMP (multiprocessing.Process):
                         dfps = 1 + (sfps - (1/tfactor)) * tfactor  # calculates a desired fps based on throttle val
                         sleeptime = int(0.95 * ((1000.0/dfps) - (ctime/(1000.0 * counter))))  # 95% of calc sleep
                         if sleeptime < 10:
+                            info('Capture framerate limited by limited system speed')
                             sleeptime = 10
                         sumtime = 0
-                counter += -evalframenum
-                ptime = int(float(ctime)/float(counter))
-                fps = float(counter)*1000/float(sumtime)
-                pcnt_sleep = float(sleeptime) * fps * 0.1
-                info('XBMCdirect captured %s frames with mean of %s fps at %s %% throttle' % (counter, fps, self.throttle))
-                info('XBMC System rendering speed: %s fps' % sfps)
-                info('XBMCdirect mean processing time per frame %s microsecs' % ptime)
-                info('XBMCdirect slept for %s msec per frame or slept %s %% of the time for each video frame'
-                     % (sleeptime, pcnt_sleep))
+                # Exiting
+                if evalframenum != -1:
+                    if counter > evalframenum and sumtime != 0 and counter != 0:
+                        counter += -evalframenum
+                        ptime = int(float(ctime)/float(counter))
+                        fps = float(counter)*1000/float(sumtime)
+                        pcnt_sleep = float(sleeptime) * fps * 0.1
+                        info('XBMCdirect captured %s frames with mean of %s fps at %s %% throttle' % (counter, fps, self.throttle))
+                        info('XBMC System rendering speed: %s fps' % sfps)
+                        info('XBMCdirect mean processing time per frame %s microsecs' % ptime)
+                        info('XBMCdirect slept for %s msec per frame or slept %s %% of the time for each video frame'
+                             % (sleeptime, pcnt_sleep))
                 self.inDataMap.close()
                 self.inDataMap = None
                 self.is_running = False

@@ -2,6 +2,7 @@
 XBMCDirect Multiprocessed instead of multithreaded
 Added performance evaluation for XBMCDirect
 Added switch.py for use with keyboard.xml
+Added ability to read capture modes from registry and only use XBMCDirect when necessary
 
 1.0.3
 Fixed bug where lights would not turn back on after using a default profile which is off
