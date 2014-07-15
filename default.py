@@ -207,8 +207,9 @@ def savexml(tree, fn):
     text_re = re.compile('>\n\s+([^<>\s].*?)\n\s+</', re.DOTALL)
     prettyXml = text_re.sub('>\g<1></', uglyXml)
     p2 = re.sub(r'\n(\s+\n)+', '\n', prettyXml)
+    p3 = re.sub(r'<\?.+?\?>', r'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'.encode('string_escape'), p2)
     with open(fn, 'w') as fo:
-        fo.write(p2.encode('utf-8'))
+        fo.write(p3.encode('utf-8'))
 
 
 def findkeyswithcmd(elementx, commandtext):
