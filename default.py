@@ -26,10 +26,12 @@ import datetime
 import re
 from _winreg import *
 import subprocess
-from xml.etree import ElementTree
 from operator import itemgetter
 import ctypes
 import multiprocessing
+from xml.etree import ElementTree as ET
+from collections import Counter
+import xml.dom.minidom as xdm
 
 user32 = ctypes.windll.user32
 screenx = user32.GetSystemMetrics(0)
@@ -37,7 +39,7 @@ screeny = user32.GetSystemMetrics(1)
 user32 = None
 
 """
-debug = False
+debug = True
 remote = False
 if debug:
     if remote:
@@ -155,90 +157,82 @@ def getStereoscopicMode():
 """
 
 
-def process_keyboard_settings():
-    if __settings__.getSetting('key_use') == 'false':
-        return
-    set_off_tpl = translate_key_settings('key_off')
-    set_on_tpl = translate_key_settings('key_on')
-    set_off_str = set_off_tpl[0] + r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, off)'\
-                  + set_off_tpl[1]
-    set_on_str = set_on_tpl[0] + r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, on)'\
-                 + set_on_tpl[1]
-    set_off_search_key = re.escape(set_off_tpl[0]) + r'.+?' + re.escape(set_off_tpl[1])
-    set_on_search_key = re.escape(set_on_tpl[0]) + r'.+?' + re.escape(set_on_tpl[1])
-    set_off_search_cmd = r'<.+?>(\n)*XBMC\.RunScript\(special:\/\/home\\addons\\script\.ambibox\\switch\.py, off\)[\S\s]*?<\/.+?>'
-    set_on_search_cmd = r'<.+?>(\n)*XBMC\.RunScript\(special:\/\/home\\addons\\script\.ambibox\\switch\.py, on\)[\S\s]*?<\/.+?>'
-    keyxmlfile = xbmc.translatePath('special://profile\keymaps\keyboard.xml')
-    if xbmcvfs.exists(keyxmlfile):
-        fo = open(keyxmlfile, 'r')
-        xml = fo.read()
-        fo.close()
-        s1 = re.search(re.escape(set_off_str), xml)
-        s2 = re.search(re.escape(set_on_str), xml)
-        if s1 is not None and s2 is not None:
-            return
-        globalsearch = re.compile(r'<global>\n.+?<keyboard>\n.+?<\/keyboard>\n.+?<\/global>\n', flags=re.DOTALL)
-        xml_global_match = globalsearch.search(xml)
-        if xml_global_match:
-            xml_global = xml_global_match.group()
-            mmkeys = [[set_off_search_cmd, set_off_search_key, set_off_str], [set_on_search_cmd, set_on_search_key, set_on_str]]
-            for mmkey in mmkeys:
-                mcmd = mmkey[0]
-                mkey = mmkey[1]
-                mstr = mmkey[2]
-                matchcmd = re.search(mcmd, xml_global)
-                matchkey = re.search(mkey, xml_global)
-                if matchcmd and matchkey:  # del cmd and change key to cmd
-                    matchedcmd = matchcmd.group()
-                    matchedkey = matchkey.group()
-                    if matchedcmd != matchedkey:
-                        n2 = re.sub(mcmd, '', xml_global)
-                        n1 = re.sub(mkey, mstr.encode('string_escape'), n2)
-                    else:
-                        n1 = xml_global
-                elif matchcmd and not matchkey:  # change cmd to new key
-                    n1 = re.sub(mcmd, mstr.encode('string_escape'), xml_global)
-                elif matchkey and not matchcmd:  # change key to cmd
-                    # matchedkey = matchkey.group()
-                    n1 = re.sub(mkey, mstr.encode('string_escape'), xml_global)
-                else:  # insert after global keyboard
-                    x = r'<global>[\s\S]*<keyboard>' + '\n'
-                    n1 = re.sub(x, '<global>\n    <keyboard>\n      ' + mstr.encode('string_escape') + '\n', xml_global)
-                xml_global = n1
-            n = re.sub(re.escape(xml_global_match.group()), xml_global.encode('string_escape'), xml)
-            xml = n
-        else:  # Create global keyboard and write strings
-            newglobal = '<keymap>\n  <global>\n    <keyboard>\n      ' + set_on_str +\
-                        '\n      ' + set_off_str + '\n' + '    </keyboard>\n  </global>\n'
-            n = re.sub(re.escape('<keymap>\n'), newglobal.encode('string_escape'), xml)
-            xml = n
-        bakfn = keyxmlfile + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak'
-        if xbmcvfs.exists(bakfn):
-            xbmcvfs.delete(bakfn)
-        xbmcvfs.rename(keyxmlfile, bakfn)
-        fo = open(keyxmlfile, 'w')
-        fo.write(xml)
-        fo.close()
-    else:  # create new keyboard.xml
-        fo = open(keyxmlfile, 'w')
-        newglobal = r'<?xml version="1.0" encoding="UTF-8"?>' + '\n<keymap>\n'
-        newglobal += '  <global>\n    <keyboard>\n      ' + set_on_str.encode('string_escape') + '\n      '\
-                     + set_off_str.encode('string_escape') + '\n'
-        newglobal += '    </keyboard>\n  </global>\n</keymap>'
-        fo.write(newglobal)
-        fo.close()
+def parsexml(fn):
+    if os.path.exists(fn):
+        with open(fn, 'rt') as f:
+            try:
+                tree = ET.parse(f)
+            except ET.ParseError, e:
+                info('Error in keyboard.xml file, skipping keymap processing')
+                info(str(e.message))
+                tree = None
+            return tree
+    else:
+        return None
 
 
-def translate_key_settings(key_type):
+def findkeybyname(element, keyname, modlist):
+    """
+    @type element: xml.etree.ElementTree.Element
+    @type keyname: str
+    @type modlist: list
+    @return:
+    @rtype: xml.etree.ElementTree.Element
+    """
+    keys = element.findall('./%s' % keyname)
+    retkey = None
+    for key in keys:
+        if key.get('mod') is None and len(modlist) == 0:
+            retkey = key
+            break
+        elif len(modlist) == 0 and key.get('mod') is not None:
+            retkey = None
+            break
+        elif len(modlist) != 0 and key.get('mod') is None:
+            retkey = None
+            break
+        else:
+            modstr = key.attrib['mod']
+            mods = modstr.split(',')
+            if Counter(mods) == Counter(modlist):  # compares hashes of strings so that order doesn't matter
+                retkey = key
+                break
+    return retkey
+
+
+def savexml(tree, fn):
+    tstr = ET.tostring(tree.getroot(), encoding='utf-8', method='xml')
+    xml = xdm.parseString(tstr)
+    uglyXml = xml.toprettyxml(indent='  ')
+    text_re = re.compile('>\n\s+([^<>\s].*?)\n\s+</', re.DOTALL)
+    prettyXml = text_re.sub('>\g<1></', uglyXml)
+    p2 = re.sub(r'\n(\s+\n)+', '\n', prettyXml)
+    with open(fn, 'w') as fo:
+        fo.write(p2.encode('utf-8'))
+
+
+def findkeyswithcmd(elementx, commandtext):
+    """
+    @type elementx: xml.etree.ElementTree.Element
+    @type commandtext: str
+    @return:
+    @rtype: xml.etree.ElementTree.Element
+    """
+
+    keys = [element for element in elementx.iter() if element.text == commandtext]
+    if len(keys) != 0:
+        return keys[0]
+    else:
+        return None
+
+
+def translate_key_settingsxml(key_type):
     __settings = xbmcaddon.Addon('script.ambibox')
     checks = ['ctrl', 'shift', 'alt']
-    mod = 'mod="'
+    mod = []
     for check in checks:
         if __settings.getSetting(key_type + '_' + check) == 'true':
-            if mod == 'mod="':
-                mod += check
-            else:
-                mod += ',' + check
+            mod.append(check)
     key = (__settings.getSetting(key_type + '_str')[0:2]).lower()
     if key[0:1] != 'f':
         key2 = key[0:1]
@@ -247,8 +241,81 @@ def translate_key_settings(key_type):
             key2 = key
         else:
             key2 = 'f'
-    ret = ['<%s %s\">' % (key2, mod), '</%s>' % key2]
+    ret = [key2, mod]
     return ret
+
+
+def create_element(element, tag, lst):
+    if len(lst) == 0:
+        return ET.SubElement(element, tag)
+    else:
+        return ET.SubElement(element, tag, attrib={'mod': ','.join(lst)})
+
+
+def process_keyboard_settings():
+    try:
+        fn = r"C:\Users\Ken User\AppData\Roaming\XBMC\userdata\keymaps\keyboard.xml"
+        keylst = [translate_key_settingsxml('key_off'), translate_key_settingsxml('key_on')]
+        cmdlst = [r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, off)', r'XBMC.RunScript('
+                  r'special://home\addons\script.ambibox\switch.py, on)']
+        if xbmcvfs.exists(fn):
+            tree = parsexml(fn)
+            if tree is None:
+                return
+            root = tree.getroot()
+            myroot = root.find('./global/keyboard')
+            if myroot is not None:
+                for key, cmd in zip(keylst, cmdlst):
+                    mkey = findkeybyname(myroot, key[0], key[1])
+                    mcmd = findkeyswithcmd(myroot, cmd)
+                    if mcmd is None and mkey is None:  # No key or command set
+                        # Add new key
+                        newkey = create_element(myroot, key[0], key[1])
+                        newkey.text = cmd
+                    elif mkey == mcmd:  # Key already correctly set
+                        continue
+                    elif (mkey is not None and mcmd is not None) and (mkey != mcmd):  # Key in use and other key set for command
+                        # Remove other key set for command and change key in use to use command
+                        myroot.remove(mcmd)
+                        mkey.text = cmd
+                    elif mkey is not None and mcmd is None:  # Key in use, no other key set for command
+                        # Change key to command
+                        mkey.text = cmd
+                    elif mcmd is not None and mkey is None:  # Command set for other key
+                        # Remove mcmd, add new key
+                        myroot.remove(mcmd)
+                        newkey = create_element(myroot, key[0], key[1])
+                        newkey.text = cmd
+                    else:
+                        pass
+            else:
+                myroot = root.find('./global')
+                if myroot is not None:  # create keyboard and add two keys
+                    newkb = ET.SubElement(myroot, 'keyboard')
+                    newkb.tail = '\n'
+                else:
+                    newgl = ET.SubElement(root, 'global')
+                    newkb = ET.SubElement(newgl, 'keyboard')
+                for key, cmd in zip(keylst, cmdlst):
+                    newkey = create_element(newkb, key[0], key[1])
+                    newkey.text = cmd
+            bakfn = fn + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak.xml'
+            if xbmcvfs.exists(bakfn):
+                xbmcvfs.delete(bakfn)
+            xbmcvfs.rename(fn, bakfn)
+            savexml(tree, fn)
+        else:  # create file and write xml
+            root = ET.Element('keymap')
+            newgl = ET.SubElement(root, 'global')
+            newkb = ET.SubElement(newgl, 'keyboard')
+            for key, cmd in zip(keylst, cmdlst):
+                newkey = create_element(newkb, key[0], key[1])
+                newkey.text = cmd
+            mytree = ET.ElementTree(root)
+            savexml(mytree, fn)
+        pass
+    except Exception, e:
+        pass
 
 
 class ProfileManager():
@@ -431,7 +498,7 @@ class ProfileManager():
                     defpfl = str(pfl)
             del pstrl[-1]
             pstr = "".join(pstrl)
-            doc = ElementTree.parse(__settingsdir__ + "\\settings.xml")
+            doc = ET.parse(__settingsdir__ + "\\settings.xml")
             repl = ".//setting[@type='labelenum']"
             fixg = doc.iterfind(repl)
             for fixe in fixg:
