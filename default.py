@@ -208,8 +208,20 @@ def savexml(tree, fn):
     prettyXml = text_re.sub('>\g<1></', uglyXml)
     p2 = re.sub(r'\n(\s+\n)+', '\n', prettyXml)
     p3 = re.sub(r'<\?.+?\?>', r'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'.encode('string_escape'), p2)
-    with open(fn, 'w') as fo:
-        fo.write(p3.encode('utf-8'))
+    p4 = p3.encode('utf-8')
+    if xbmcvfs.exists(fn):
+        with open(fn, 'r') as fo:
+            oldxml = fo.read()
+        if Counter(oldxml) != Counter(p4):  # Only make backup and rewrite if new xml is different
+            bakfn = fn + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak.xml'
+            if xbmcvfs.exists(bakfn):
+                xbmcvfs.delete(bakfn)
+            xbmcvfs.rename(fn, bakfn)
+            with open(fn, 'w') as fo:
+                fo.write(p4)
+    else:
+        with open(fn, 'w') as fo:
+            fo.write(p4)
 
 
 def findkeyswithcmd(elementx, commandtext):
@@ -300,10 +312,6 @@ def process_keyboard_settings():
                 for key, cmd in zip(keylst, cmdlst):
                     newkey = create_element(newkb, key[0], key[1])
                     newkey.text = cmd
-            bakfn = fn + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak.xml'
-            if xbmcvfs.exists(bakfn):
-                xbmcvfs.delete(bakfn)
-            xbmcvfs.rename(fn, bakfn)
             savexml(tree, fn)
         else:  # create file and write xml
             root = ET.Element('keymap')
