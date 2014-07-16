@@ -941,7 +941,8 @@ class XbmcMonitor(xbmc.Monitor):
             pm.chkProfileSettings()
             pm.get_profile_types_from_reg()
         chkMediaInfo()
-        process_keyboard_settings()
+        if __settings__.getSetting('key_use'):
+            process_keyboard_settings()
 
 
 class XBMCDirectMP (multiprocessing.Process):
@@ -1118,7 +1119,8 @@ def main():
     global ambibox
     monitor = XbmcMonitor()
     pm.start()
-    process_keyboard_settings()
+    if __settings__.getSetting('key_use'):
+        process_keyboard_settings()
     if ambibox.connect() == 0:
         notification(__language__(32030))  # @[Connected to AmbiBox] 
         info('Started - ver %s' % __version__)
