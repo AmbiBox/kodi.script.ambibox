@@ -80,29 +80,31 @@ except ValueError:
 
 def chkMediaInfo():
     # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
-    global __usingMediaInfo__
-    global mediax
-    if xbmcvfs.exists(xbmc.translatePath(os.path.join(__resource__ + 'mediainfo.dll'))):
-        __usingMediaInfo__ = True
-    else:
-        try:
-            aReg = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
-            key = OpenKey(aReg, r'Software\Microsoft\Windows\CurrentVersion\App Paths\MediaInfo.exe')
-            path = QueryValue(key, None)
-            CloseKey(key)
-            CloseKey(aReg)
-            if path != '':
-                __usingMediaInfo__ = True
-        except WindowsError:
-            pass
-    if __usingMediaInfo__ is True:
-        #from media import *
-        try:
-            # import media as mediax
-            from media import Media as mediax
-        except ImportError:
-            mediax = None
-            __usingMediaInfo__ = False
+    if mediax is None:
+        global __usingMediaInfo__
+        global mediax
+        mi_url = xbmc.translatePath(os.path.join(__resource__ + '\\mediainfo.dll'))
+        if xbmcvfs.exists(mi_url):
+            __usingMediaInfo__ = True
+        else:
+            try:
+                aReg = ConnectRegistry(None, HKEY_LOCAL_MACHINE)
+                key = OpenKey(aReg, r'Software\Microsoft\Windows\CurrentVersion\App Paths\MediaInfo.exe')
+                path = QueryValue(key, None)
+                CloseKey(key)
+                CloseKey(aReg)
+                if path != '':
+                    __usingMediaInfo__ = True
+            except WindowsError:
+                pass
+        if __usingMediaInfo__ is True:
+            #from media import *
+            try:
+                # import media as mediax
+                from media import Media as mediax
+            except ImportError:
+                mediax = None
+                __usingMediaInfo__ = False
 
 chkMediaInfo()
 ambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
@@ -744,6 +746,8 @@ class CapturePlayer(xbmc.Player):
                             mi_called = True
                         except:
                             infos = [0, 0, 1, 0]
+                        else:
+                            info('Aspect ratio determined by mediainfo.dll')
                     else:
                         infos = [0, 0, 1, 0]
 
@@ -756,22 +760,19 @@ class CapturePlayer(xbmc.Player):
                     infos[3] = float(vp_ar)
                 except TypeError:
                     infos[3] = float(0)
-            else:
-                info('Aspect ratio determined by mediainfo.dll')
+                else:
+                    info('Aspect ratio determined by InfoLabel')
 
             # Capture Method
             if infos[3] == 0:
                 rc = xbmc.RenderCapture()
                 infos[3] = rc.getAspectRatio()
-            else:
-                info('Aspect ratio determined by InfoLabel')
-
+                if not(0.95 < infos[3] < 1.05) and infos[3] != 0:
+                    info('Aspect ratio determined by XBMC.Capture()')
+                else:
             # Fallback Method
-            if (0.95 < infos[3] < 1.05) or infos[3] == 0:  # fallback to screen aspect ratio
-                infos[3] = float(screenx)/float(screeny)
-                info('Aspect ratio not able to be determined - usng screen AR')
-            else:
-                info('Aspect ratio determined by XBMC.Capture()')
+                    infos[3] = float(screenx)/float(screeny)
+                    info('Aspect ratio not able to be determined - using screen AR')
 
             if __settings.getSetting('3D_enable') == 'true':
                 # Get Stereoscopic Information
@@ -957,6 +958,7 @@ class XBMCDirectMP (multiprocessing.Process):
         self.is_running = False
 
     def start(self):
+        self.exit_event.clear()
         multiprocessing.Process.start(self)
 
     def stop(self):
@@ -980,8 +982,17 @@ class XBMCDirectMP (multiprocessing.Process):
             inimap = []
             try:
                 self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
-            except Exception:
-                pass
+            except Exception, e:
+                info('Error creating connectio to Ambibox Windows')
+                if hasattr(e, 'message'):
+                   info(str(e.message))
+                elif hasattr(e, 'msg'):
+                    info(str(e.msg))
+                return
+            else:
+                if self.inDataMap is None:
+                    info('Error creating connection to Ambibox Windows, no further information available')
+                    return
             # get one frame to get length
             aax = None
             #while not self.player.isPlayingVideo():
