@@ -80,9 +80,9 @@ except ValueError:
 
 def chkMediaInfo():
     # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
+    global __usingMediaInfo__
+    global mediax
     if mediax is None:
-        global __usingMediaInfo__
-        global mediax
         mi_url = xbmc.translatePath(os.path.join(__resource__ + '\\mediainfo.dll'))
         if xbmcvfs.exists(mi_url):
             __usingMediaInfo__ = True
