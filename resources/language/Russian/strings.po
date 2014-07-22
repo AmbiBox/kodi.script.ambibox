@@ -307,3 +307,14 @@ msgctxt "#32077"
 msgid "Key to Use"
 msgstr "Ключ к Используйте"
 
+msgctxt "#32078"
+msgid "Processing type"
+msgstr "Тип обработки"
+
+msgctxt "#32079"
+msgid "Multiprocessing"
+msgstr "Многопроцессорные"
+
+msgctxt "#32080"
+msgid "Multithreading"
+msgstr "Несколько потоков"

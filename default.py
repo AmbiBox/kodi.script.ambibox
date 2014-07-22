@@ -29,6 +29,7 @@ import subprocess
 from operator import itemgetter
 import ctypes
 import multiprocessing
+import threading
 from xml.etree import ElementTree as ET
 from collections import Counter
 import xml.dom.minidom as xdm
@@ -779,7 +780,10 @@ class CapturePlayer(xbmc.Player):
                         except:
                             infos = [0, 0, 1, 0]
                         else:
-                            info('Aspect ratio determined by mediainfo.dll')
+                            if infos[3] != 0:
+                                info('Aspect ratio determined by mediainfo.dll')
+                            else:
+                                info('mediainfo.dll returned AR = 0')
                     else:
                         infos = [0, 0, 1, 0]
 
@@ -912,15 +916,24 @@ class CapturePlayer(xbmc.Player):
                         infos[1] = screeny
                 infos[0] = int(infos[1]*infos[3])
 
+                process_type = __settings.getSetting('process_type')
+                throttle = float(__settings.getSetting('throttle'))
+                info('XBMCDirect throttle =  %s, qual = %s, captureX = %s, captureY = %s'
+                     % (throttle, quality, infos[0], infos[1]))
                 if self.xd is not None:
                     self.kill_XBMCDirect()
-                throttle = float(__settings.getSetting('throttle'))
-                self.xd = XBMCDirectMP(infos, throttle)
+                if process_type == '0':
+                    info('XBMCDirect using multiprocessing')
+                    self.xd = XBMCDirectMP(infos, throttle)
+                else:
+                    info('XBMCDirect using threading')
+                    self.xd = XBMCDirectThread(infos, throttle)
                 self.xd.run()
+
             elif profile_is_XBMCDirect is False:
                 info('XBMCDirect not started because profile not using XBMCDirect')
             elif profile_is_XBMCDirect is None:
-                info('XBMCDirect not started due to an error detecting whether or not it uses XBMCDirect')
+                info('XBMCDirect not started due to an error detecting whether or not profile uses XBMCDirect')
 
     def onPlayBackEnded(self):
         if pm.current_profile_is_XBMCDirect():
@@ -931,15 +944,20 @@ class CapturePlayer(xbmc.Player):
         self.onPBSfired = False
 
     def kill_XBMCDirect(self):
-        if self.xd is not None:
-            self.xd.stop()
-        if self.xd is not None:
-            if self.xd.is_alive():
-                self.xd.join(0.5)
-        if self.xd is not None:
-            if self.xd.is_alive():
-                self.xd.terminate()
-        self.xd = None
+        try:
+            if self.xd is not None:
+                self.xd.stop()
+            if self.xd is not None:
+                if self.xd.is_alive():
+                    self.xd.join(0.5)
+            if self.xd is not None:
+                if self.xd.is_alive():
+                    self.xd.terminate()
+            self.xd = None
+        except Exception as e:
+            info('Error terminating XBMCDirect')
+            if hasattr(e, 'message'):
+                info(str(e.message))
 
     def onPlayBackStopped(self):
         self.onPlayBackEnded()
@@ -1006,7 +1024,7 @@ class XBMCDirectMP (multiprocessing.Process):
         del self
 
     def run(self):
-        multiprocessing.Process.run(self)
+        #multiprocessing.Process.run(self)
         self.is_running = True
         capture = xbmc.RenderCapture()
         tw = capture.getHeight()
@@ -1115,11 +1133,13 @@ class XBMCDirectMP (multiprocessing.Process):
                     if counter == evalframenum:
                         dfps = 1 + (sfps - (1/tfactor)) * tfactor  # calculates a desired fps based on throttle val
                         sleeptime = int(0.95 * ((1000.0/dfps) - (ctime/(1000.0 * counter))))  # 95% of calc sleep
+                        info('Over first %s frames, avg process time for render = %s microsecs' % (counter, int(float(ctime)/float(counter))))
                         if sleeptime < 10:
                             info('Capture framerate limited by limited system speed')
                             sleeptime = 10
                         sumtime = 0
                 # Exiting
+                info('XBMCDirect terminating capture')
                 if evalframenum != -1:
                     if counter > evalframenum and sumtime != 0 and counter != 0:
                         counter += -evalframenum
@@ -1143,6 +1163,127 @@ class XBMCDirectMP (multiprocessing.Process):
             self.is_running = False
             if not self.exit_event.is_set():
                 info("Error retrieving video file dimensions")
+
+
+class XBMCDirectThread (threading.Thread):
+
+    def __init__(self, infos, throttle):
+        threading.Thread.__init__(self, name='XBMCDirectT')
+        self.killswitch = False
+        self.infos = infos
+        self.throttle = throttle
+        self.is_running = False
+
+    def start(self):
+        threading.Thread.start(self)
+
+    def run(self):
+        self.is_running = True
+        capture = xbmc.RenderCapture()
+        tw = capture.getHeight()
+        th = capture.getWidth()
+        tar = capture.getAspectRatio()
+        width = self.infos[0]
+        height = self.infos[1]
+        ratio = self.infos[2]
+        if (width != 0 and height != 0 and ratio != 0):
+            inimap = []
+            try:
+                self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            except Exception, e:
+                info('Error creating connectio to Ambibox Windows')
+                if hasattr(e, 'message'):
+                   info(str(e.message))
+                elif hasattr(e, 'msg'):
+                    info(str(e.msg))
+                return
+            else:
+                if self.inDataMap is None:
+                    info('Error creating connection to Ambibox Windows, no further information available')
+                    return
+            # get one frame to get length
+            aax = None
+            #while not self.player.isPlayingVideo():
+                #xbmc.sleep(100)
+                #continue
+            for idx in xrange(1, 10):
+                xbmc.sleep(100)
+                capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+                capture.waitForCaptureStateChangeEvent(1000)
+                aax = capture.getCaptureState()
+                if aax == xbmc.CAPTURE_STATE_FAILED:
+                    del capture
+                    capture = xbmc.RenderCapture()
+                elif aax == xbmc.CAPTURE_STATE_DONE:
+                    break
+
+            if aax != xbmc.CAPTURE_STATE_FAILED:
+                inimap.append(chr(0))
+                inimap.append(chr(width & 0xff))
+                inimap.append(chr((width >> 8) & 0xff))
+                # height
+                inimap.append(chr(height & 0xff))
+                inimap.append(chr((height >> 8) & 0xff))
+                # aspect ratio
+                inimap.append(chr(int(ratio * 100)))
+                # image format
+                fmt = capture.getImageFormat()
+                if fmt == 'RGBA':
+                    inimap.append(chr(0))
+                elif fmt == 'BGRA':
+                    inimap.append(chr(1))
+                else:
+                    inimap.append(chr(2))
+                image = capture.getImage()
+                length = len(image)
+                # datasize
+                inimap.append(chr(length & 0xff))
+                inimap.append(chr((length >> 8) & 0xff))
+                inimap.append(chr((length >> 16) & 0xff))
+                inimap.append(chr((length >> 24) & 0xff))
+                inimapstr = "".join(inimap)
+                notification(__language__(32034))  # @[XBMCDirect Success]
+                info('XBMCDirect capture initiated')
+
+                capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+
+                sleeptime = 10
+                sfps = xbmc.getInfoLabel('System.FPS')
+                while not self.killswitch:
+                    capture.waitForCaptureStateChangeEvent(500)
+                    if capture.getCaptureState() == xbmc.CAPTURE_STATE_DONE:
+                        image = capture.getImage()
+                        newlen = len(image)
+                        self.inDataMap.seek(0)
+                        seeked = self.inDataMap.read_byte()
+                        if ord(seeked) == 248:  # check that XBMC Direct is running
+                            if newlen != length:
+                                length = newlen
+                                inimapnew = inimap[0:6]
+                                inimapnew.append(chr(length & 0xff))
+                                inimapnew.append(chr((length >> 8) & 0xff))
+                                inimapnew.append(chr((length >> 16) & 0xff))
+                                inimapnew.append(chr((length >> 24) & 0xff))
+                                inimapstr = "".join(inimapnew)
+                            self.inDataMap[1:10] = inimapstr[1:10]
+                            self.inDataMap[11:(11 + length)] = str(image)
+                            # write first byte to indicate we finished writing the data
+                            self.inDataMap[0] = (chr(240))
+                        xbmc.sleep(sleeptime)
+                # Exiting
+                info('XBMCDirect terminating capture')
+                self.killswitch = False
+                self.inDataMap.close()
+                self.inDataMap = None
+                self.is_running = False
+            else:
+                info('Capture failed')
+                notification(__language__(32035))  # @[XBMCDirect Fail]
+        else:
+            info("Error retrieving video file dimensions")
+
+    def stop(self):
+        self.killswitch = True
 
 
 class Timer(object):

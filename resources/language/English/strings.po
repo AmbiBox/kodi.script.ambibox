@@ -306,3 +306,14 @@ msgctxt "#32077"
 msgid "Key to Use"
 msgstr ""
 
+msgctxt "#32078"
+msgid "Processing type"
+msgstr ""
+
+msgctxt "#32079"
+msgid "Multiprocessing"
+msgstr ""
+
+msgctxt "#32080"
+msgid "Multithreading"
+msgstr ""

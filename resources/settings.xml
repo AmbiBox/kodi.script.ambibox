@@ -22,6 +22,7 @@
     <setting default="true" id="show_menu" label="32023" type="bool" value="true" visible="false" />
     <setting default="0" id="directXBMC_quality" label="32043" lvalues="32044|32045|32046|32047" type="enum" />
     <setting default="100" id="throttle" label="32068" option="int" range="1,100" type="slider" />
+    <setting default="1" id="process_type" label="32078" lvalues="32079|32080" type="enum" />
  </category>
 
  <category label="32053">
