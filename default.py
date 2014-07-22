@@ -410,7 +410,7 @@ class ProfileManager():
                 backlight_plugin_name = QueryValueEx(key, 'BacklightPluginName')
                 grabber = QueryValueEx(key, 'Grabber')
                 info('Profile - Pname: %s  Plugin: %s  Grabber: %s' % (pname[0], backlight_plugin_name[0], grabber[0]))
-                if backlight_plugin_name[0] != u'Colormusic' and grabber[0] == 8:
+                if grabber[0] == 8:
                     self._pfl_xd[str(pname[0])] = True
                 else:
                     self._pfl_xd[str(pname[0])] = False
