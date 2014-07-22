@@ -38,7 +38,6 @@ screenx = user32.GetSystemMetrics(0)
 screeny = user32.GetSystemMetrics(1)
 user32 = None
 
-"""
 debug = True
 remote = False
 if debug:
@@ -50,7 +49,6 @@ if debug:
         sys.path.append('C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
         import pydevd
         pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True)
-"""
 
 # Modules XBMC
 import xbmc
@@ -373,21 +371,40 @@ class ProfileManager():
         return ret
 
     def current_profile_is_XBMCDirect(self):
-        return self._pfl_xd[self.currentProfile]
+        if self.currentProfile in self._pfl_xd.keys():
+            try:
+                ret = self._pfl_xd[self.currentProfile]
+                return ret
+            except Exception, e:
+                info('Error retrieving XBMC info for %s' % self.currentProfile)
+                info('Current Profile Dictionary: %s' % str(self._pfl_xd))
+                if hasattr(e, 'message'):
+                    info(str(e.message))
+                return None
+        else:
+            info('No profile found in registry matching: %s' % self.currentProfile)
+            info('Current Profile Dictionary: %s' % str(self._pfl_xd))
+            return None
 
     def get_profile_types_from_reg(self):
+        reg_pfl_names = []
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         try:
             key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
             profileCount = QueryValueEx(key, 'ProfilesCount')
-            if type(profileCount[0]) is int:
+            if isinstance(profileCount[0], int):
                 count = int(profileCount[0])
             else:
                 count = 0
             for i in xrange(0, count):
                 key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
                 pname = QueryValueEx(key, 'ProfileName_%s' % str(i))
-                key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles\%s' % str(pname[0]))
+                reg_pfl_names.append(str(pname[0]))
+                try:
+                    key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles\%s' % str(pname[0]))
+                except Exception, e:
+                    info('Error opening registry key for profile: %s' % str(pname[0]))
+                    continue
                 backlight_plugin_name = QueryValueEx(key, 'BacklightPluginName')
                 grabber = QueryValueEx(key, 'Grabber')
                 if backlight_plugin_name[0] == '' and grabber[0] == 8:
@@ -397,8 +414,23 @@ class ProfileManager():
             CloseKey(aReg)
         except WindowsError or EnvironmentError, e:
             info("Error reading profile types from registry")
+            if hasattr(e, 'message'):
+                info(str(e.message))
+            return
         except Exception, e:
-            pass
+            info("Other error reading profile types from registry")
+            if hasattr(e, 'message'):
+                info(str(e.message))
+            return
+        abx_pfl_names = ambibox.getProfiles()
+        if Counter(reg_pfl_names) != Counter(abx_pfl_names):
+            info('There is an discrepancy between profile names in the registry and Ambibox')
+            info('Registry: %s' % str(reg_pfl_names))
+            info('Ambibox %s' % str(abx_pfl_names))
+        else:
+            info('Profile names in registry and Ambibox match: %s' % str(reg_pfl_names))
+        if self._pfl_xd is not None:
+            info('Dictionary for XBMCDirect: %s' % str(self._pfl_xd))
         return
 
     def chkAmbiboxRunning(self):
@@ -697,19 +729,16 @@ class CapturePlayer(xbmc.Player):
         off = len(menu)-2
         on = len(menu)-1
         mquit = False
-        time.sleep(1)
+        xbmc.sleep(100)
         selected = xbmcgui.Dialog().select(__language__(32020), menu)  # @[Select profile] 
         while not mquit:
             if selected != -1:
-                ambibox.lock()
                 if (off == int(selected)):
-                    ambibox.turnOff()
+                    pm.lightSwitch(pm.LIGHTS_OFF)
                 elif (on == int(selected)):
-                    ambibox.turnOn()
+                    pm.lightSwitch(pm.LIGHTS_ON)
                 else:
-                    ambibox.turnOn()
                     pm.setProfile('true', menu[selected])
-                ambibox.unlock()
             mquit = True
 
     def onPlayBackPaused(self):
@@ -828,7 +857,8 @@ class CapturePlayer(xbmc.Player):
                 pm.lightSwitch(pm.LIGHTS_OFF)
 
         # Start separate process for XBMC Capture
-            if pm.current_profile_is_XBMCDirect():
+            profile_is_XBMCDirect = pm.current_profile_is_XBMCDirect()
+            if profile_is_XBMCDirect is True:
                 # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
                 # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
 
@@ -884,6 +914,10 @@ class CapturePlayer(xbmc.Player):
                 throttle = float(__settings.getSetting('throttle'))
                 self.xd = XBMCDirectMP(infos, throttle)
                 self.xd.run()
+            elif profile_is_XBMCDirect is False:
+                info('XBMCDirect not started because profile not using XBMCDirect')
+            elif profile_is_XBMCDirect is None:
+                info('XBMCDirect not started due to an error detecting whether or not it uses XBMCDirect')
 
     def onPlayBackEnded(self):
         if pm.current_profile_is_XBMCDirect():
