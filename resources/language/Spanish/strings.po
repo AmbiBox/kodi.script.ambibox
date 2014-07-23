@@ -318,3 +318,7 @@ msgstr "Multiprocesamiento"
 msgctxt "#32080"
 msgid "Mutlithreading"
 msgstr "Hilos multi"
+
+msgctxt "#32081"
+msgid "No threading or multiprocessor"
+msgstr "No roscado o multiprocesador"

@@ -317,3 +317,7 @@ msgstr ""
 msgctxt "#32080"
 msgid "Multithreading"
 msgstr ""
+
+msgctxt "#32081"
+msgid "No threading or multiprocessor"
+msgstr ""
