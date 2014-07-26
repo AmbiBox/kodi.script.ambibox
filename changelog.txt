@@ -1,3 +1,8 @@
+1.0.4.7
+Removed multiprocessing - not working
+Add option for measuring code performance or not
+Streamlined code for threaded vs nonthreaded
+
 1.0.4
 XBMCDirect Multiprocessed instead of multithreaded
 Added performance evaluation for XBMCDirect

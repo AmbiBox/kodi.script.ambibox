@@ -308,17 +308,9 @@ msgid "Key to Use"
 msgstr "La clave para utilizar"
 
 msgctxt "#32078"
-msgid "Processing type"
-msgstr "Tipo de elaboración"
+msgid "Use threading?"
+msgstr "Utilice hilos?"
 
 msgctxt "#32079"
-msgid "Multiprocessing"
-msgstr "Multiprocesamiento"
-
-msgctxt "#32080"
-msgid "Mutlithreading"
-msgstr "Hilos multi"
-
-msgctxt "#32081"
-msgid "No threading or multiprocessor"
-msgstr "No roscado o multiprocesador"
+msgid "Measure performance?"
+msgstr "Medir el rendimiento?"

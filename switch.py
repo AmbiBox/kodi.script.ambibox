@@ -23,14 +23,17 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 
-__addon__ = xbmcaddon.Addon('script.ambibox')
+try:
+    __addon__ = xbmcaddon.Addon('script.ambibox')
+except:
+    sys.exit()
 __cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 __language__ = __settings__.getLocalizedString
-sys.path.append(__resource__)
+# sys.path.append(__resource__)
 
-from ambibox import AmbiBox
+from resources.lib.ambibox import AmbiBox
 abx = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 str_cmd = sys.argv[1]
 
@@ -69,7 +72,3 @@ try:
             notification(__language__(32070))  # @[LEDs Off] 
 except Exception, e:
     pass
-
-"""
-<f7 mod="ctrl">XBMC.RunScript(special://home\addons\script.ambibox\switch.py, on)</f7>
-"""

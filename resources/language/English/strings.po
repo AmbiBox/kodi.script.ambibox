@@ -307,17 +307,9 @@ msgid "Key to Use"
 msgstr ""
 
 msgctxt "#32078"
-msgid "Processing type"
+msgid "Use threading?"
 msgstr ""
 
 msgctxt "#32079"
-msgid "Multiprocessing"
-msgstr ""
-
-msgctxt "#32080"
-msgid "Multithreading"
-msgstr ""
-
-msgctxt "#32081"
-msgid "No threading or multiprocessor"
+msgid "Measure performance?"
 msgstr ""

@@ -43,7 +43,7 @@ class AmbiBox:
             self.__readResult()
             return 0
         except:
-            print 'AmbiBox API server is missing'
+            # print 'AmbiBox API server is missing'
             return -1
 
     def disconnect(self):
