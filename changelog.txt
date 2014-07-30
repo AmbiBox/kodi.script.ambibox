@@ -1,3 +1,7 @@
+1.0.4.8
+Rewrote classes to make more readable and cleaned up code
+Fixed bugs
+
 1.0.4.7
 Removed multiprocessing - not working
 Add option for measuring code performance or not

@@ -21,7 +21,7 @@
     <setting default="true" id="disable_on_screensaver" label="32050" type="bool" value="true" />
     <setting default="true" id="show_menu" label="32023" type="bool" value="true" visible="false" />
     <setting default="0" id="directXBMC_quality" label="32043" lvalues="32044|32045|32046|32047" type="enum" />
-    <setting default="2" id="use_threading" label="32078" type="bool" />
+    <setting default="false" id="use_threading" label="32078" type="bool" />
     <setting default="true" id="instrumented" label="32079" type="bool" />
     <setting default="100" enable="eq(-1,true)" id="throttle" label="32068" option="int" range="1,100" type="slider" />
  </category>

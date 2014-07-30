@@ -18,7 +18,7 @@ import socket
 import os
 
 
-class AmbiBox:
+class AmbiBox(object):
 
 #	host = '127.0.0.1'    # The remote host
 #	port = 3636           # The same port as used by the server

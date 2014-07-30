@@ -30,6 +30,7 @@ __scriptname__ = __addon__.getAddonInfo('name')
 __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
 mambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
+
 def info(msg):
     xbmc.log("### [%s] - %s" % (__scriptname__, msg,), level=xbmc.LOGNOTICE)
 

@@ -27,31 +27,38 @@ from operator import itemgetter
 import ctypes
 import threading
 from xml.etree import ElementTree as ET
-from collections import Counter
+from collections import Counter, namedtuple
 import xml.dom.minidom as xdm
 # Modules XBMC
-import xbmc
+simul = False
+if simul:
+    import xbmcsim as xbmc
+else:
+    import xbmc
 import xbmcgui
 import xbmcaddon
 import xbmcvfs
 # Modules AmbiBox
 from resources.lib.ambibox import AmbiBox
+__language__ = None
 
-__addon__ = xbmcaddon.Addon()
-__cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
-__scriptname__ = __addon__.getAddonInfo('name')
-__version__ = str(__addon__.getAddonInfo('version'))
-__settings__ = xbmcaddon.Addon("script.ambibox")
-__language__ = __settings__.getLocalizedString
-__settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
-__resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
-# sys.path.append(__resource__)
-__usingMediaInfo__ = False
-mediax = None
-screenx = 0
-screeny = 0
-ambibox = None
-pm = None
+if not simul:
+    __addon__ = xbmcaddon.Addon()
+    __cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')
+    __scriptname__ = __addon__.getAddonInfo('name')
+    __version__ = str(__addon__.getAddonInfo('version'))
+    __settings__ = xbmcaddon.Addon("script.ambibox")
+    __language__ = __settings__.getLocalizedString
+    __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
+    __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
+    __usingMediaInfo__ = False
+    mediax = None
+    screenx = 0
+    screeny = 0
+    sar = 0.0
+    ambibox = None
+    scriptsettings = None
+    Arprofile_info = namedtuple('Arprofile_info', 'profile_name, aspectratio, lower_lmt, upper_lmt')
 
 
 def start_debugger(remote=False):
@@ -102,17 +109,20 @@ def notification(text, *silence):
     @type text: str
     @type silence: bool
     """
-    text = text.encode('utf-8')
-    info(text)
-    if __settings__.getSetting("notification") == 'true':
-        icon = __settings__.getAddonInfo("icon")
-        smallicon = icon.encode("utf-8")
-        # xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
-        dialog = xbmcgui.Dialog()
-        if silence:
-            dialog.notification('Ambibox', text, smallicon, 1000, False)
-        else:
-            dialog.notification('Ambibox', text, smallicon, 1000, True)
+    if not simul:
+        text = text.encode('utf-8')
+        info(text)
+        if __settings__.getSetting("notification") == 'true':
+            icon = __settings__.getAddonInfo("icon")
+            smallicon = icon.encode("utf-8")
+            # xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
+            dialog = xbmcgui.Dialog()
+            if silence:
+                dialog.notification('Ambibox', text, smallicon, 1000, False)
+            else:
+                dialog.notification('Ambibox', text, smallicon, 1000, True)
+    else:
+        print text
 
 
 def debug(txt):
@@ -123,10 +133,13 @@ def debug(txt):
 
 
 def info(txt):
-    if isinstance(txt, str):
-        txt = txt.decode("utf-8")
-    message = u"### [%s] - %s" % (__scriptname__, txt)
-    xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGNOTICE)
+    if not simul:
+        if isinstance(txt, str):
+            txt = txt.decode("utf-8")
+        message = u"### [%s] - %s" % (__scriptname__, txt)
+        xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGNOTICE)
+    else:
+        print txt
 
 
 """
@@ -328,34 +341,82 @@ def process_keyboard_settings():
         pass
 
 
-class ProfileManager():
+class Profiles(object):
+
+    def __init__(self):
+        self._profile_dict = dict()
+
+    def add(self, name, is_xbmc_direct):
+        self._profile_dict[name] = is_xbmc_direct
+
+    def profiles(self):
+        return self._profile_dict
+
+    def __len__(self):
+        return len(self._profile_dict)
+
+    def is_xbmc_direct(self, name):
+        if name in self._profile_dict:
+            return self._profile_dict[name]
+        else:
+            return None
+
+
+class XbmcAmbibox(AmbiBox):
     LIGHTS_ON = True
     LIGHTS_OFF = False
 
-    def __init__(self):
-        self.AmbiboxRunning = False
-        self.currentProfile = ""
-        self._ABP = None
-        self._pfl_xd = dict()
+    def __init__(self, host, port):
+        self.ambiboxw_installed = False
+        self.is_installed = False
+        self.chkAmibiboxInstalled()
+        self.is_running = False
+        self.chk_ambiboxw_running()
+        self.xbmc_started_ambiboxw = False
+        self.leds_on = False
+        self.current_profile = ''
+        self.ambibox_process = None
+        self.profiles = []
+        super(XbmcAmbibox, self).__init__(host, port)
+        if __settings__.getSetting('start_ambibox') == 'true' and self.is_running is False:
+            self.start_ambiboxw()
+        self.retrieve_profiles()
 
-    @property
-    def ABP(self):
-        return self._ABP
+    def get_profiles(self):
+        if len(self.profiles) == 0:
+            self.retrieve_profiles()
+        return self.profiles
 
-    @ABP.setter
-    def ABP(self, popobject):
-        self._ABP = popobject
+    def retrieve_profiles(self):
+        if self.connect() == 0:
+            self.profiles = self.getProfiles()
+        else:
+            self.profiles = []
+            aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
+            try:
+                key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
+                profileCount = QueryValueEx(key, 'ProfilesCount')
+                if isinstance(profileCount[0], int):
+                    count = int(profileCount[0])
+                else:
+                    count = 0
+                for i in xrange(0, count):
+                    key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
+                    pname = QueryValueEx(key, 'ProfileName_%s' % str(i))
+                    self.profiles.append(str(pname[0]))
+                CloseKey(aReg)
+            except WindowsError or EnvironmentError, e:
+                info("Error reading profiles from registry")
+                if hasattr(e, 'message'):
+                    info(str(e.message))
+                return
+            except Exception, e:
+                info("Other error reading profiles from registry")
+                if hasattr(e, 'message'):
+                    info(str(e.message))
+                return
 
-    @ABP.getter
-    def ABP(self):
-        return self._ABP
-
-    @ABP.deleter
-    def ABP(self):
-        del self._ABP
-
-    @staticmethod
-    def chkAmibiboxInstalled():
+    def chkAmibiboxInstalled(self):
         # returns number of profiles if installed, 0 if installed with no profiles, -1 not installed
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         try:
@@ -369,23 +430,221 @@ class ProfileManager():
         except WindowsError or EnvironmentError:
             ret = -1
         CloseKey(aReg)
+        if ret > 0:
+            self.is_installed = True
+        if ret == 0:
+            notification(__language__(32006))  # @[No profiles configured in Ambibox]
+            info('No profiles found in Ambibox')
+        elif ret == -1:
+            notification(__language__(32007))  # @[AmbiBox installation not found: exiting script]
+            info('Ambibox installation not found: terminating script')
+            sys.exit()
         return ret
 
-    def current_profile_is_XBMCDirect(self):
-        if self.currentProfile in self._pfl_xd.keys():
+    def chk_ambiboxw_running(self):
+        proclist = []
+        cmd = 'WMIC PROCESS get Caption,Commandline,Processid'
+        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        for line in proc.stdout:
+            proclist.append(str(line))
+        proc.terminate()
+        del proc
+        proclist.sort()
+        self.is_running = False
+        for proc in proclist:
+            if proc[0:7] == "AmbiBox":
+                self.is_running = True
+                break
+            elif str(proc[0:1]).lower() == 'b':
+                break
+        return self.is_running
+
+    def start_ambiboxw(self):
+        if self.is_running is False:
+            self.chk_ambiboxw_running()
+        if self.is_installed and self.is_running is False:
+            aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
             try:
-                ret = self._pfl_xd[self.currentProfile]
-                return ret
-            except Exception, e:
-                info('Error retrieving XBMC info for %s' % self.currentProfile)
-                info('Current Profile Dictionary: %s' % str(self._pfl_xd))
+                key = OpenKey(aReg, r'Software\Server IR')
+                p = QueryValueEx(key, 'InstallPath')
+                ambiboxpath = xbmc.translatePath(str(p[0]) + r'\Ambibox.exe')
+                CloseKey(key)
+                CloseKey(aReg)
+            except WindowsError:
+                CloseKey(aReg)
+                return False
+            try:
+                popobj = subprocess.Popen([ambiboxpath])
+                self.ambibox_process = popobj
+                pid = popobj.pid
+            except WindowsError as e:
+                notification(__language__(32008))  # @[Ambibox could not be started]
+                info('Could not start AmbiBox executable')
                 if hasattr(e, 'message'):
-                    info(str(e.message))
-                return None
+                    info(e.message)
+                sys.exit()
+            else:
+                if pid is not None:
+                    self.is_running = True
+                    self.lightSwitch(self.LIGHTS_OFF)
+                    return True
+                else:
+                    notification(__language__(32008))  # @[Ambibox could not be started]
+                    info('Could not start AmbiBox executable')
+                    sys.exit()
+
+    def __del__(self):
+        if self.ambibox_process is not None:
+            self.close()
+
+    def set_profile(self, profile, enable=True, force=False):
+        """
+        If connected to AmbiBox, change the profile to profile.
+        If force = true, turn on lights regardless of state
+        @type enable: string (either 'true' or 'false')
+        @type profile: string
+        @type force: bool
+        @rtype: None
+        """
+        self.current_profile = profile
+        if self.connect() == 0:
+            self.lock()
+            if profile != 'None':
+                notification(__language__(32033) % profile)  # @[Set profile %s]
+                self.setProfile(profile)
+            else:
+                notification(__language__(32032))  # @[Ambibox turned off]
+            self.unlock()
+        if force or profile != 'None':
+            self.lightSwitch(self.LIGHTS_ON)
         else:
-            info('No profile found in registry matching: %s' % self.currentProfile)
-            info('Current Profile Dictionary: %s' % str(self._pfl_xd))
-            return None
+            self.lightSwitch(self.LIGHTS_OFF)
+
+    def lightSwitch(self, lightChangeState):
+        global scriptsettings
+        """
+        lightchangestate is class constant either LIGHTS_ON or LIGHTS_OFF
+        @param lightChangeState: LIGHTS_ON or LIGHTS_OFF
+        @type  lightChangeState: bool
+        @rtype: None
+        """
+        if self.connect() == 0:
+            self.lock()
+            try:
+                if (lightChangeState is self.LIGHTS_ON) and scriptsettings.check_manual_switch() == 'on':
+                    self.turnOn()
+                elif lightChangeState is self.LIGHTS_OFF:
+                    self.turnOff()
+            except Exception:
+                pass
+            self.unlock()
+
+    def switch_to_default_profile(self):
+        global scriptsettings
+        if scriptsettings.settings['default_enable'] is True:
+            self.set_profile(scriptsettings.settings['default_profile'])
+        else:
+            self.lightSwitch(self.LIGHTS_OFF)
+
+    def close(self):
+        try:
+            if self.ambibox_process is not None:
+                self.ambibox_process.terminate()
+                self.ambibox_process = None
+        except Exception as e:
+            info('Error deleting ambibox process')
+            if hasattr(e, 'message'):
+                info(str(e.message))
+
+
+class ScriptSettings(object):
+
+    def __init__(self):
+        self.settings = dict()
+        self.aspect_ratio_codes = ['43', '32', '169', '185', '22', '24']
+        self.ar_dict = {'43': 1.333, '32': 1.5, '69': 1.778, '85': 1.85, '22': 2.2, '24': 2.4}
+        self.stereo_modes = ['2D', '3DS', '3DT']
+        self.aspect_ratio_settings = []
+        self.profiles = Profiles()
+        self.refresh_settings()
+
+    def refresh_settings(self):
+        global __settings__
+        __settings__ = xbmcaddon.Addon('script.ambibox')
+        self.settings = dict()
+        settingliststr = ['host', 'port', 'notification', 'default_profile', 'audio_profile',
+                          'video_profile', 'key_on_str', 'key_off_str']
+        settinglistint = ['video_choice', 'directXBMC_quality']
+        settinglistbool = ['notification', 'start_ambibox', 'default_enable', 'audio_enable', 'disable_on_screensaver',
+                           'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use', 'key_on_shift',
+                           'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt']
+        settinglistfloat = ['throttle']
+
+        for s in settingliststr:
+            self.settings[s] = str(__settings__.getSetting(s)).decode('utf-8')
+        for s in settinglistint:
+            try:
+                self.settings[s] = int(__settings__.getSetting(s))
+            except ValueError:
+                info('Error reading integer settings')
+        for s in settinglistbool:
+            if __settings__.getSetting(s) == 'true':
+                self.settings[s] = True
+            else:
+                self.settings[s] = False
+        for s in settinglistfloat:
+            self.settings[s] = int(__settings__.getSetting(s))
+        self.chkProfileSettings()
+        self.updateprofilesettings()
+        self.get_ar_profiles()
+        self.get_profile_types_from_reg()
+        info('Settings refreshed')
+
+    def check_manual_switch(self):
+        global __settings__
+        __settings__ = xbmcaddon.Addon('script.ambibox')
+        return __settings__.getSetting('manual_switch')
+
+    def get_ar_profiles(self):
+        global ambibox
+        global Arprofile_info
+        arprofiles = {}
+        ambiboxprofiles = ambibox.get_profiles()
+        for stereomode in self.stereo_modes:
+            tempprofiles = []
+            for ar_code in self.aspect_ratio_codes:
+                settingid = '%s_%s' % (stereomode, ar_code)
+                profl = __settings__.getSetting(settingid)
+                if profl != 'None':
+                    spfl = settingid[len(settingid)-2:]
+                    ar = self.ar_dict[spfl]
+                    ar_profileinfo = Arprofile_info(profile_name=profl, aspectratio=ar, lower_lmt=ar, upper_lmt=ar)
+                    if profl in ambiboxprofiles:
+                        tempprofiles.append(ar_profileinfo)
+                    elif not ambiboxprofiles:
+                        #Should never get to this statement
+                        info("Profile existance not checked due to unavailability of Amibibox API")
+                        tempprofiles.append(ar_profileinfo)
+            tempprofiles.sort(key=itemgetter(1))
+            arprofiles[stereomode] = tempprofiles
+        for stereomode in self.stereo_modes:
+            tempprofiles = arprofiles[stereomode]
+            i1 = len(tempprofiles)
+            new_profiles = []
+            for i, pfl in enumerate(tempprofiles):
+                if i == 0:
+                    ll = 0.1
+                else:
+                    ll = float((pfl.aspectratio + tempprofiles[i-1].aspectratio)/2)
+                if i == i1-1:
+                    ul = 99
+                else:
+                    ul = float((pfl.aspectratio + tempprofiles[i+1].aspectratio)/2)
+                new_profile_info = Arprofile_info(profile_name=pfl.profile_name, aspectratio=pfl.aspectratio,
+                                                  lower_lmt=ll, upper_lmt=ul)
+                new_profiles.append(new_profile_info)
+            arprofiles[stereomode] = new_profiles
+        self.aspect_ratio_settings = arprofiles
 
     def get_profile_types_from_reg(self):
         reg_pfl_names = []
@@ -410,9 +669,9 @@ class ProfileManager():
                 grabber = QueryValueEx(key, 'Grabber')
                 debug('Profile - Pname: %s  Plugin: %s  Grabber: %s' % (pname[0], backlight_plugin_name[0], grabber[0]))
                 if grabber[0] == 8:
-                    self._pfl_xd[str(pname[0])] = True
+                    self.profiles.add(pname[0], True)
                 else:
-                    self._pfl_xd[str(pname[0])] = False
+                    self.profiles.add(pname[0], False)
             CloseKey(aReg)
         except WindowsError or EnvironmentError, e:
             info("Error reading profile types from registry")
@@ -424,65 +683,11 @@ class ProfileManager():
             if hasattr(e, 'message'):
                 info(str(e.message))
             return
-        abx_pfl_names = ambibox.getProfiles()
-        if Counter(reg_pfl_names) != Counter(abx_pfl_names):
-            info('There is an discrepancy between profile names in the registry and Ambibox')
-            info('Registry: %s' % str(reg_pfl_names))
-            info('Ambibox %s' % str(abx_pfl_names))
-        else:
-            debug('Profile names in registry and Ambibox match: %s' % str(reg_pfl_names))
-        if self._pfl_xd is not None:
-            debug('Dictionary for XBMCDirect: %s' % str(self._pfl_xd))
-        return
 
-    def chkAmbiboxRunning(self):
-        proclist = []
-        cmd = 'WMIC PROCESS get Caption,Commandline,Processid'
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-        for line in proc.stdout:
-            proclist.append(str(line))
-        proc.terminate()
-        del proc
-        proclist.sort()
-        self.AmbiboxRunning = False
-        for proc in proclist:
-            if proc[0:7] == "AmbiBox":
-                self.AmbiboxRunning = True
-                break
-            elif str(proc[0:1]).lower() == 'b':
-                break
-        return self.AmbiboxRunning
-
-    def startAmbibox(self):
-        aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
-        try:
-            key = OpenKey(aReg, r'Software\Server IR')
-            p = QueryValueEx(key, 'InstallPath')
-            ambiboxpath = xbmc.translatePath(str(p[0]) + r'\Ambibox.exe')
-            CloseKey(key)
-            CloseKey(aReg)
-        except WindowsError:
-            CloseKey(aReg)
-            return False
-        try:
-            popobj = subprocess.Popen([ambiboxpath])
-            self.ABP = popobj
-            pid = popobj.pid
-        except WindowsError:
-            return False
-        else:
-            if pid is not None:
-                self.AmbiboxRunning = True
-                self.lightSwitch(self.LIGHTS_OFF)
-                return True
-            else:
-                return False
-
-    @staticmethod
-    def chkProfileSettings():
-        __settings = xbmcaddon.Addon("script.ambibox")
+    def chkProfileSettings(self):
+        global scriptsettings
         if ambibox.connect() == 0:
-            pfls = ambibox.getProfiles()
+            pfls = ambibox.get_profiles()
             sets2chk = ['default_profile', 'audio_profile', 'video_profile']
             vidfmts = ['2D', '3DS', '3DT']
             ars = ['43', '32', '169', '185', '22', '24']
@@ -490,12 +695,52 @@ class ProfileManager():
                 for ar in ars:
                     setn = vidfmt + '_' + ar
                     sets2chk.append(setn)
+            dirty = False
             for setn in sets2chk:
-                pname = __settings.getSetting(setn)
+                pname = __settings__.getSetting(setn)
                 if pname != 'None':
                     if not(pname in pfls):
-                        __settings.setSetting(setn, 'None')
+                        dirty = True
+                        __settings__.setSetting(setn, 'None')
                         info('Missing profile %s set to None' % setn)
+            if dirty is True:
+                self.refresh_settings()
+
+    def updateprofilesettings(self):
+        # updates choices (values="..") in settings.xml with profiles present in Ambibox program
+        pstrl = []
+        if ambibox.connect() == 0:
+            pfls = ambibox.get_profiles()
+            numpfls = len(pfls)
+            info('%s profile(s) retrieved from program' % numpfls)
+            defpfl = 'None'
+            pstrl.append('None')
+            pstrl.append('|')
+            for pfl in pfls:
+                pstrl.append(str(pfl))
+                pstrl.append('|')
+                if str(pfl).lower() == 'default':
+                    defpfl = str(pfl)
+            del pstrl[-1]
+            pstr = "".join(pstrl)
+            doc = ET.parse(__settingsdir__ + "\\settings.xml")
+            repl = ".//setting[@type='labelenum']"
+            fixg = doc.iterfind(repl)
+            for fixe in fixg:
+                fixe.set('values', pstr)
+                fixe.set('default', defpfl)
+            doc.write(__settingsdir__ + "\\settings.xml")
+            xbmc.executebuiltin('UpdateLocalAddons')
+
+    def set_setting(self, name, value):
+        global __settings__
+        __settings__ = xbmcaddon.Addon('script.ambibox')
+        __settings__.setSetting(name, value)
+        self.settings[name] = value
+
+
+"""
+class ProfileManager():
 
     def start(self):
         __settings = xbmcaddon.Addon("script.ambibox")
@@ -524,197 +769,22 @@ class ProfileManager():
                 self.chkProfileSettings()
                 self.get_profile_types_from_reg()
         self.setProfile(__settings.getSetting('default_enable'), __settings.getSetting('default_profile'))
-
-    @staticmethod
-    def updateprofilesettings():
-        # updates choices (values="..") in settings.xml with profiles present in Ambibox program
-        pstrl = []
-        if ambibox.connect() == 0:
-            pfls = ambibox.getProfiles()
-            numpfls = len(pfls)
-            info('%s profile(s) retrieved from program' % numpfls)
-            defpfl = 'None'
-            pstrl.append('None')
-            pstrl.append('|')
-            for pfl in pfls:
-                pstrl.append(str(pfl))
-                pstrl.append('|')
-                if str(pfl).lower() == 'default':
-                    defpfl = str(pfl)
-            del pstrl[-1]
-            pstr = "".join(pstrl)
-            doc = ET.parse(__settingsdir__ + "\\settings.xml")
-            repl = ".//setting[@type='labelenum']"
-            fixg = doc.iterfind(repl)
-            for fixe in fixg:
-                fixe.set('values', pstr)
-                fixe.set('default', defpfl)
-            doc.write(__settingsdir__ + "\\settings.xml")
-
-            xbmc.executebuiltin('UpdateLocalAddons')
-
-    @staticmethod
-    def getARProfiles():
-        # Returns 3 tuples with profiles for 2D, 3DSBS and 3DTAB
-        # [0] is name, [1] is the AR, [2] is the lower limit, [3] is the upper limit
-        # limits are calculated as the midway point between adjacent profiles
-
-        ARProfiles = []
-        __settings = xbmcaddon.Addon("script.ambibox")
-        if ambibox.connect() == 0:
-            pfls = ambibox.getProfiles()
-        else:
-            pfls = []
-        setlist2D = ['2D_43', '2D_32', '2D_169', '2D_185', '2D_22', '2D_24']
-        setlist3DS = ['3DS_43', '3DS_32', '3DS_169', '3DS_185', '3DS_22', '3DS_24']
-        setlist3DT = ['3DT_43', '3DT_32', '3DT_169', '3DT_185', '3DT_22', '3DT_24']
-        setlists = [setlist2D, setlist3DS, setlist3DT]
-        ARdict = {'43': 1.333, '32': 1.5, '69': 1.778, '85': 1.85, '22': 2.2, '24': 2.4}
-        for setlist in setlists:
-            tpfl = []
-            for settingid in setlist:
-                profl = str(__settings.getSetting(settingid))
-                if profl != 'None':
-                    spfl = settingid[len(settingid)-2:]
-                    AR = ARdict[spfl]
-                    if profl in pfls:
-                        tpfl.append([profl, AR, AR, AR])
-                    elif not pfls:
-                        #Should never get to this statement
-                        info("Profile existance not checked due to unavailability of Amibibox API")
-                        tpfl.append([profl, AR, AR, AR])
-                    else:
-                        tpfl.append([__settings.getSetting('default'), AR, AR, AR])
-                        info("Profile in settings not a valid Ambibox profile - using default")
-            tpfl.sort(key=itemgetter(1))
-            ARProfiles.append(tpfl)
-
-        for tpfl in ARProfiles:
-            i1 = len(tpfl)
-            for i, pfl in enumerate(tpfl):
-                if i == 0:
-                    ll = 0.1
-                else:
-                    ll = float((pfl[1] + tpfl[i-1][1])/2)
-                if i == i1-1:
-                    ul = 99
-                else:
-                    ul = float((pfl[1] + tpfl[i+1][1])/2)
-                pfl[2] = ll
-                pfl[3] = ul
-        return ARProfiles
-
-    def setProfile(self, enable, profile, *force):
-        """
-        If connected to AmbiBox, change the profile to profile.
-        If force = true, turn on lights regardless of state
-        @type enable: string (either 'true' or 'false')
-        @type profile: string
-        @type force: bool
-        @rtype: None
-        """
-        self.currentProfile = profile
-        if ambibox.connect() == 0:
-            ambibox.lock()
-            if enable == 'true' and profile != 'None':
-                notification(__language__(32033) % profile)  # @[Set profile %s]
-                ambibox.setProfile(profile)
-            else:
-                notification(__language__(32032))  # @[Ambibox turned off] 
-            ambibox.unlock()
-        if force or (enable == 'true' and profile != 'None'):
-            self.lightSwitch(self.LIGHTS_ON)
-        else:
-            self.lightSwitch(self.LIGHTS_OFF)
-
-    def lightSwitch(self, lightChangeState):
-        """
-        lightchangestate is class constant either LIGHTS_ON or LIGHTS_OFF
-        @param lightChangeState: LIGHTS_ON or LIGHTS_OFF
-        @type  lightChangeState: bool
-        @rtype: None
-        """
-        __settings = xbmcaddon.Addon("script.ambibox")
-        if ambibox.connect() == 0:
-            ambibox.lock()
-            try:
-                if (lightChangeState is self.LIGHTS_ON) and __settings.getSetting('manual_switch') == 'on':
-                    ambibox.turnOn()
-                elif lightChangeState is self.LIGHTS_OFF:
-                    ambibox.turnOff()
-            except Exception:
-                pass
-            ambibox.unlock()
-
-    def SetAbxProfile(self, dar, vidfmt):
-        """
-        Sets the profile based on AR and video format
-        @type dar: float
-        @type vidfmt: str
-        @rtype: bool
-        """
-        ret = False
-        if ambibox.connect() == 0:
-            pfls = ambibox.getProfiles()
-            ARProfiles = self.getARProfiles()
-            pname = self.GetProfileName(pfls, dar, vidfmt, ARProfiles)
-            self.setProfile('true', pname)
-            ret = True
-        return ret
-
-    @staticmethod
-    def GetProfileName(pfls, DisplayAspectRatio, vidfmt, ARProfiles):
-        """
-        Retrieves the profile name based upon the AR and video format
-        @type pfls: list of string
-        @type DisplayAspectRatio: float
-        @type vidfmt: str
-        @type ARProfiles: list of string
-        @rtype: string
-        """
-        __settings = xbmcaddon.Addon("script.ambibox")
-        pdict = {'Normal': ARProfiles[0], 'SBS': ARProfiles[1], 'TAB': ARProfiles[2]}
-        arp = pdict[vidfmt]
-        pfl = [x[0] for x in arp if x[2] < DisplayAspectRatio <= x[3]]
-        ret = pfl[0]
-        if ret != "":
-            if ret in pfls:
-                return ret
-            else:
-                info("Profile in xml not found by Ambibox - using default")
-                ret = __settings.getSetting("default_profile")
-                return ret
-        else:
-            info("No profiles have been set up for this video type - using default")
-            return __settings.getSetting("default_profile")
-
-    def close(self):
-        try:
-            popobj = self.ABP
-            if popobj is not None:
-                popobj.terminate()
-                del popobj
-            del self.ABP
-        except Exception:
-            pass
+"""
 
 
 class CapturePlayer(xbmc.Player):
 
     def __init__(self, *args):
-        xbmc.Player.__init__(self)
-        self.inDataMap = None
         self.re3D = re.compile("[-. _]3d[-. _]", re.IGNORECASE)
         self.reTAB = re.compile("[-. _]h?tab[-. _]", re.IGNORECASE)
         self.reSBS = re.compile("[-. _]h?sbs[-. _]", re.IGNORECASE)
         self.onPBSfired = False
         self.xd = None
-        self.XBMCDirect_Event = None
         self.playing_file = ''
-        self.inDataMap = None
+        super(CapturePlayer, self).__init__(*args)
 
     def showmenu(self):
-        menu = ambibox.getProfiles()
+        menu = ambibox.get_profiles()
         menu.append(__language__(32021))  # @[Backlight off] 
         menu.append(__language__(32022))  # @[Backlight on] 
         off = len(menu)-2
@@ -725,11 +795,11 @@ class CapturePlayer(xbmc.Player):
         while not mquit:
             if selected != -1:
                 if (off == int(selected)):
-                    pm.lightSwitch(pm.LIGHTS_OFF)
+                    ambibox.lightSwitch(ambibox.LIGHTS_OFF)
                 elif (on == int(selected)):
-                    pm.lightSwitch(pm.LIGHTS_ON)
+                    ambibox.lightSwitch(ambibox.LIGHTS_ON)
                 else:
-                    pm.setProfile('true', menu[selected])
+                    ambibox.set_profile(menu[selected])
             mquit = True
 
     def onPlayBackPaused(self):
@@ -743,19 +813,20 @@ class CapturePlayer(xbmc.Player):
             self.onPlayBackStarted()
 
     def onPlayBackStarted(self):
-        __settings = xbmcaddon.Addon("script.ambibox")
-        ambibox.connect()
+        if ambibox.connect() != 0:
+            return
         self.onPBSfired = True
         if not (self.isPlayingAudio() or self.isPlayingVideo()):
             xbmc.sleep(500)
         if self.isPlayingAudio():
-            pm.setProfile(__settings.getSetting("audio_enable"), __settings.getSetting("audio_profile"))
+            ambibox.set_profile(scriptsettings.settings["audio_enable"],
+                                enable=scriptsettings.settings["audio_profile"])
         if self.isPlayingVideo():
             try:
                 self.playing_file = self.getPlayingFile()
             except:
                 return
-            infos = [0, 0, 1, 0]
+            infos = [0, 0, 1, 0, 0]
             mi_called = False
             # Get aspect ratio
             # First try MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
@@ -768,81 +839,79 @@ class CapturePlayer(xbmc.Player):
                             infos = mediax().getInfos(self.playing_file)
                             mi_called = True
                         except:
-                            infos = [0, 0, 1, 0]
+                            infos = [0, 0, 1, 0, 0]
                         else:
                             if infos[3] != 0:
-                                info('Aspect ratio determined by mediainfo.dll')
+                                info('Aspect ratio determined by mediainfo.dll = % s' % infos[3])
                             else:
                                 info('mediainfo.dll returned AR = 0')
                     else:
-                        infos = [0, 0, 1, 0]
+                        infos = [0, 0, 1, 0, 0]
+                else:
+                    xbmc.sleep(1000)
 
             #Info Label Method
             if infos[3] == 0:
                 while xbmc.getInfoLabel("VideoPlayer.VideoAspect") is None:
-                    pass
+                    xbmc.sleep(500)
                 vp_ar = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
                 try:
                     infos[3] = float(vp_ar)
                 except TypeError:
                     infos[3] = float(0)
                 else:
-                    info('Aspect ratio determined by InfoLabel')
+                    info('Aspect ratio determined by InfoLabel = %s' % vp_ar)
 
             # Capture Method
             if infos[3] == 0:
                 rc = xbmc.RenderCapture()
                 infos[3] = rc.getAspectRatio()
                 if not(0.95 < infos[3] < 1.05) and infos[3] != 0:
-                    info('Aspect ratio determined by XBMC.Capture()')
+                    info('Aspect ratio determined by XBMC.Capture = %s' % infos[3])
                 else:
             # Fallback Method
                     infos[3] = float(screenx)/float(screeny)
-                    info('Aspect ratio not able to be determined - using screen AR')
+                    info('Aspect ratio not able to be determined - using screen AR = %s' % infos[3])
 
-            if __settings.getSetting('3D_enable') == 'true':
+            if scriptsettings.settings['3D_enable'] is True:
                 # Get Stereoscopic Information
                 # Use infoLabels
                 #sm2 = getStereoscopicMode()
-                stereoMode = xbmc.getInfoLabel("VideoPlayer.StereoscopicMode")
+                stereomode = xbmc.getInfoLabel("VideoPlayer.StereoscopicMode")
                 vidfmt = ''
-                if stereoMode == 'top_bottom':
-                    vidfmt = 'TAB'
-                elif stereoMode == 'left_right':
-                    vidfmt = 'SBS'
+                if stereomode == 'top_bottom':
+                    vidfmt = '3DT'
+                elif stereomode == 'left_right':
+                    vidfmt = '3DS'
                 else:
                     m = self.re3D.search(self.playing_file)
-                    if m and __settings.getSetting('3D_enable'):
+                    if m:
                         n = self.reTAB.search(self.playing_file)
                         if n:
-                            vidfmt = "TAB"
+                            vidfmt = "3DT"
                         else:
                             n = self.reSBS.search(self.playing_file)
                             if n:
-                                vidfmt = "SBS"
+                                vidfmt = "3DS"
                             else:
                                 info("Error in 3D filename - using default settings")
-                                main().pm.setProfile('true', __settings.getSetting("video_profile"))
+                                ambibox.set_profile(scriptsettings["video_profile"])
                     else:
-                        vidfmt = "Normal"
+                        vidfmt = "2D"
             else:
-                vidfmt = "Normal"
+                vidfmt = "2D"
 
             # Get video mode from settings
 
-            videomode = __settings.getSetting("video_choice")
-            try:
-                videomode = int(videomode)
-            except (ValueError, TypeError):
-                videomode = 2
+            videomode = scriptsettings.settings["video_choice"]
 
             if videomode == 0:    # Use Default Video Profile
                 info('Using default video profile')
-                pm.setProfile('true', __settings.getSetting("video_profile"))
+                ambibox.set_profile(scriptsettings.settings["video_profile"])
             elif videomode == 1:  # Autoswitch
                 DAR = infos[3]
                 if DAR != 0:
-                    pm.SetAbxProfile(DAR, vidfmt)
+                    self.setprofilebydar(DAR, vidfmt)
                     info('Autoswitched on AR')
                 else:
                     info("Error retrieving DAR from video file")
@@ -851,9 +920,9 @@ class CapturePlayer(xbmc.Player):
                 info('Using menu for profile pick')
             elif videomode == 3:   # Turn off
                 info('User set lights off for video')
-                pm.lightSwitch(pm.LIGHTS_OFF)
+                ambibox.lightSwitch(ambibox.LIGHTS_OFF)
 
-            profile_is_XBMCDirect = pm.current_profile_is_XBMCDirect()
+            profile_is_XBMCDirect = scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile)
             if profile_is_XBMCDirect is True:
                 # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
                 # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
@@ -890,26 +959,33 @@ class CapturePlayer(xbmc.Player):
                     infos[1] = screeny
 
                 # Set quality
-
-                quality = __settings.getSetting('directXBMC_quality')
+                quality = scriptsettings.settings['directXBMC_quality']
                 minq = 32
                 maxq = infos[1]
-                if quality == '0':
+                if quality == 0:
                     infos[1] = minq
-                elif quality == '1':
+                    infos[0] = int(infos[1]*infos[3])
+                elif quality == 1:
                     infos[1] = int(minq + ((maxq - minq)/3))
-                elif quality == '2':
+                    infos[0] = int(infos[1]*infos[3])
+                elif quality == 2:
                     infos[1] = int(minq + (2*(maxq - minq)/3))
+                    infos[0] = int(infos[1]*infos[3])
                 else:
-                    if infos[1] == 0:
-                        infos[1] = screeny
-                infos[0] = int(infos[1]*infos[3])
+                    if infos[3] > sar:
+                        if infos[1] == 0:
+                            infos[1] = screeny
+                        infos[0] = int(infos[1]*infos[3])
+                    else:
+                        if infos[0] == 0:
+                            infos[0] = screenx
+                        infos[1] = int(infos[0]/infos[3])
 
                 # Get other settings associated with XBMC Direct
 
-                use_threading = __settings.getSetting('use_threading') == 'true'
-                throttle = float(__settings.getSetting('throttle'))
-                instrumented = __settings.getSetting('instrumented') == 'true'
+                use_threading = scriptsettings.settings['use_threading']
+                throttle = scriptsettings.settings['throttle']
+                instrumented = scriptsettings.settings['instrumented']
 
                 info('XBMCDirect throttle =  %s, qual = %s, captureX = %s, captureY = %s, thread = %s, instr = %s'
                      % (throttle, quality, infos[0], infos[1], use_threading, instrumented))
@@ -923,11 +999,10 @@ class CapturePlayer(xbmc.Player):
                 info('XBMCDirect not started due to an error detecting whether or not profile uses XBMCDirect')
 
     def onPlayBackEnded(self):
-        if pm.current_profile_is_XBMCDirect():
+        if scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile) is True:
             self.kill_XBMCDirect()
-        __settings = xbmcaddon.Addon("script.ambibox")
         if ambibox.connect() == 0:
-            pm.setProfile(__settings.getSetting("default_enable"), __settings.getSetting("default_profile"))
+            ambibox.switch_to_default_profile()
         self.onPBSfired = False
 
     def kill_XBMCDirect(self):
@@ -960,7 +1035,7 @@ class CapturePlayer(xbmc.Player):
                 self.kill_XBMCDirect()
             info('XBMCDirect using threading')
             try:
-                p = XBMCDt(infos, runtype=XBMCD.TYPE_THREADED, instrumented=instrumented, throttle=throttle)
+                p = XBMCDt(infos, instrumented=instrumented, throttle=throttle)
                 p.start()
             except Exception as e:
                 info('Error starting XBMC Direct threaded')
@@ -969,53 +1044,67 @@ class CapturePlayer(xbmc.Player):
                 self.xd = p
         else:
             info('XBMCDirect not using threading')
-            self.xd = XBMCD_normal(infos, runtype=XBMCD.TYPE_STANDARD, instrumented=instrumented, throttle=throttle)
+            self.xd = XBMCD_normal(infos, instrumented=instrumented, throttle=throttle)
             self.xd.run()
+
+    def setprofilebydar(self, aspect_ratio, vidfmt):
+        global scriptsettings, ambibox
+        pfls = ambibox.get_profiles()
+        arp = scriptsettings.aspect_ratio_settings[vidfmt]
+        pfl = [x.profile_name for x in arp if x.lower_lmt < aspect_ratio <= x.upper_lmt]
+        ret = pfl[0]
+        if ret != "":
+            if ret in pfls:
+                ambibox.set_profile(ret)
+            else:
+                info("Profile in settings.xml not found by Ambibox - using default")
+                ambibox.switch_to_default_profile()
+        else:
+            info("No profiles have been set up for this video type - using default")
+            ambibox.switch_to_default_profile()
 
 
 class XbmcMonitor(xbmc.Monitor):
 
     def __init__(self):
-        xbmc.Monitor.__init__(self)
-        self.ssOn = False
+        super(XbmcMonitor, self).__init__()
 
     def onScreensaverDeactivated(self):
-        __settings = xbmcaddon.Addon("script.ambibox")
-        if __settings.getSetting("disable_on_screensaver") and ambibox.connect() == 0:
-            pm.lightSwitch(pm.LIGHTS_ON)
+        global scriptsettings
+        if scriptsettings.settings["disable_on_screensaver"] is True and ambibox.connect() == 0:
+            ambibox.lightSwitch(ambibox.LIGHTS_ON)
             info('Screensaver stopped: LEDs on')
 
     def onScreensaverActivated(self):
-        __settings = xbmcaddon.Addon("script.ambibox")
-        if __settings.getSetting("disable_on_screensaver") and ambibox.connect() == 0:
+        global scriptsettings
+        if scriptsettings.settings["disable_on_screensaver"] is True and ambibox.connect() == 0:
             notification(__language__(32032), True)  # silent notification  # @[Ambibox turned off] 
-            pm.lightSwitch(pm.LIGHTS_OFF)
+            ambibox.lightSwitch(ambibox.LIGHTS_OFF)
             info('Screensaver started: LEDs off')
 
     def onSettingsChanged(self):
-        __settings = xbmcaddon.Addon("script.ambibox")
-        if __settings.getSetting('start_ambibox') == 'true' and pm.AmbiboxRunning is False:
-            pm.start()
-        elif pm.AmbiboxRunning is True:
-            pm.chkProfileSettings()
-            pm.get_profile_types_from_reg()
+        global scriptsettings, ambibox, __settings__
+        __settings__ = xbmcaddon.Addon('script.ambibox')
+        scriptsettings.refresh_settings()
+        if scriptsettings.settings['start_ambibox'] is True and ambibox.is_running is False:
+            ambibox.start_ambiboxw()
         chkMediaInfo()
         if __settings__.getSetting('key_use'):
             process_keyboard_settings()
 
 
 class XBMCDt(threading.Thread):
-    def __init__(self, infos, runtype=1, instrumented=False, throttle=100.0):
-        super(XBMCDt, self).__init__(name='XBMCDt')
+
+    def __init__(self, infos, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
-        self.runtype = runtype
         self.instrumented = instrumented
         self.throttle = throttle
+        super(XBMCDt, self).__init__(name='XBMCDt')
 
     def run(self):
         info('XBMCD_threaded run event')
-        self.worker = XBMCD(self.infos, self.runtype, self.instrumented, self.throttle)
+        self.worker = XBMCD(self.infos, XBMCD.TYPE_THREADED, self.instrumented, self.throttle)
         self.worker.run()
 
     def stop(self):
@@ -1023,16 +1112,16 @@ class XBMCDt(threading.Thread):
         del self
 
 
-class XBMCD_normal():
-    def __init__(self, infos, runtype=1, instrumented=False, throttle=100.0):
+class XBMCD_normal(object):
+
+    def __init__(self, infos, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
-        self.runtype = runtype
         self.instrumented = instrumented
         self.throttle = throttle
 
     def run(self):
-        self.worker = XBMCD(self.infos, self.runtype, self.instrumented, self.throttle)
+        self.worker = XBMCD(self.infos, XBMCD.TYPE_STANDARD, self.instrumented, self.throttle)
         self.worker.run()
 
     def stop(self):
@@ -1044,7 +1133,7 @@ class XBMCD_normal():
         return self.worker is not None
 
 
-class XBMCD():
+class XBMCD(object):
     TYPE_STANDARD = 1
     TYPE_THREADED = 2
 
@@ -1088,8 +1177,19 @@ class XBMCD():
         width = self.infos[0]
         height = self.infos[1]
         ratio = self.infos[2]
+        missed_capture_count = 0
+        counter = 0
+        length = width * height * 4
+        sfps = self.infos[4]
+        if sfps == 0:
+            sfps = float(xbmc.getInfoLabel('System.FPS'))
+        info('Initial video framerate reported as %s' % str(sfps))
+        tpf = int(1000.0/sfps)
+        sleeptime = int(0.1 * tpf)
         try:
-            self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            self.inDataMap = mmap.mmap(0, length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            if simul:
+                self.inDataMap[0] = chr(248)
         except Exception, e:
             info('Error creating connection to Ambibox Windows')
             if hasattr(e, 'message'):
@@ -1100,13 +1200,10 @@ class XBMCD():
                 info('Error creating connection to Ambibox Windows, no further information available')
                 return
         capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
-        missed_capture_count = 0
-        counter = 0
-        length = width * height * 4
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
         while self.exit_event(counter) is False:
-            capture.waitForCaptureStateChangeEvent(1000)
+            capture.waitForCaptureStateChangeEvent(tpf)
             cgcs = capture.getCaptureState()
             if cgcs == xbmc.CAPTURE_STATE_DONE:
                 image = capture.getImage()
@@ -1138,11 +1235,13 @@ class XBMCD():
                         self.inDataMap[8] = (chr((length >> 8) & 0xff))
                         self.inDataMap[9] = (chr((length >> 16) & 0xff))
                         self.inDataMap[10] = (chr((length >> 24) & 0xff))
-                    counter += 1
-                    # data
                     self.inDataMap[11:(11+length)] = str(image)
                     # write first byte to indicate we finished writing the data
                     self.inDataMap[0] = (chr(240))
+                    counter += 1
+                    xbmc.sleep(sleeptime)
+                    if simul:
+                        self.inDataMap[0] = chr(248)
                 elif cgcs == xbmc.CAPTURE_STATE_WORKING:
                     missed_capture_count += 1
                     continue
@@ -1151,6 +1250,7 @@ class XBMCD():
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
                         notification(__language__(32035))  # @[XBMCDirect Fail]
                     break
+        del capture
         info('XBMCDirect capture terminated')
         if missed_capture_count != 0:
             info('XBMCDirect reports missing %s captures due to RenderCapture timeouts' % missed_capture_count)
@@ -1165,8 +1265,17 @@ class XBMCD():
         width = self.infos[0]
         height = self.infos[1]
         ratio = self.infos[2]
+        missed_capture_count = 0
+        counter = 0
+        length = width * height * 4
+        sfps = self.infos[4]
+        if sfps == 0:
+            sfps = float(xbmc.getInfoLabel('System.FPS'))
+        info('Initial video framerate reported as %s' % str(sfps))
+        tpf = int(1000.0/sfps)
+        sleeptime = int(0.1 * tpf)
         try:
-            self.inDataMap = mmap.mmap(0, width * height * 4 + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            self.inDataMap = mmap.mmap(0, length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
         except Exception, e:
             info('Error creating connection to Ambibox Windows')
             if hasattr(e, 'message'):
@@ -1177,17 +1286,10 @@ class XBMCD():
                 info('Error creating connection to Ambibox Windows, no further information available')
                 return
         sumtime = 0
-        counter = 0
         ctime = 0
         tfactor = self.throttle/100.0
-        sleeptime = 10
-        sfps = float(xbmc.getInfoLabel('System.FPS'))
-        info('Initial video framerate reported as %s' % str(sfps))
-        tpf = int(1.0/sfps)
         evalframenum = -1
-        missed_capture_count = 0
         capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
-        length = width * height * 4
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
         while self.exit_event(counter) is False:
@@ -1228,8 +1330,8 @@ class XBMCD():
                             self.inDataMap[11:(11 + length)] = str(image)
                             # write first byte to indicate we finished writing the data
                             self.inDataMap[0] = (chr(240))
+                            counter += 1
                     ctime += t2.microsecs
-                    counter += 1
                     xbmc.sleep(sleeptime)
                 elif cgcs == xbmc.CAPTURE_STATE_WORKING:
                     missed_capture_count += 1
@@ -1242,7 +1344,7 @@ class XBMCD():
             sumtime += t.msecs
             if counter == 50:
                 sfps = float(xbmc.getInfoLabel('System.FPS'))  # wait for 50 frames before getting fps
-                tpf = int(1.0/sfps)
+                tpf = int(1000.0/sfps)
                 evalframenum = int(sfps * 10.0)  # evaluate how much to sleep over first 10s of video
             if counter == evalframenum:
                 dfps = 1 + (sfps - (1/tfactor)) * tfactor  # calculates a desired fps based on throttle val
@@ -1256,6 +1358,7 @@ class XBMCD():
                 ctime = 0
         # Exiting
         info('XBMCDirect terminating capture')
+        del capture
         if evalframenum != -1:
             if counter > evalframenum and sumtime != 0 and counter != 0:
                 counter += -evalframenum
@@ -1275,8 +1378,9 @@ class XBMCD():
 
 
 class Timer(object):
+
     def __init__(self):
-        pass
+        super(Timer, self).__init__()
 
     def __enter__(self):
         self.start = time.time()
@@ -1290,36 +1394,31 @@ class Timer(object):
 
 
 def main():
-    global ambibox, screenx, screeny, ambibox, pm
+    global ambibox, screenx, screeny, sar, scriptsettings
     user32 = ctypes.windll.user32
     screenx = user32.GetSystemMetrics(0)
     screeny = user32.GetSystemMetrics(1)
     del user32
+    sar = float(screenx)/float(screeny)
     try:
         xbmc_version = float(str(xbmc.getInfoLabel("System.BuildVersion"))[0:4])
     except ValueError:
         xbmc_version = 13.1
     chkMediaInfo()
-    ambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
-    if __settings__.getSetting('key_use'):
+    ambibox = XbmcAmbibox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
+    if __settings__.getSetting('start_ambibox') == 'true':
+        ambibox.start_ambiboxw()
+    scriptsettings = ScriptSettings()
+    if scriptsettings.settings['key_use']:
         process_keyboard_settings()
-    pm = ProfileManager()
-    pm.start()
     player = None
-    if ambibox.connect() == 0:
-        notification(__language__(32030))  # @[Connected to AmbiBox] 
-        info('Started - ver %s' % __version__)
-    else:
-        notification(__language__(32031))  # @[Failed to connect to AmbiBox] 
-        player = None
     monitor = XbmcMonitor()
     while not xbmc.abortRequested:
         if player is None:
             if ambibox.connect() == 0:
                 notification(__language__(32030))  # @[Connected to AmbiBox] 
                 info('Started - ver %s' % __version__)
-                pm.updateprofilesettings()
-                pm.chkProfileSettings()
+                ambibox.switch_to_default_profile()
                 player = CapturePlayer()
             xbmc.sleep(1000)
         else:
@@ -1329,21 +1428,30 @@ def main():
                 if player.isPlayingVideo() and not player.onPBSfired:
                     info('Firing missed onPlayBackStarted event')
                     player.onPlayBackStarted()
-            xbmc.sleep(100)
-    pm.close()
-    del pm
+            xbmc.sleep(250)
     if player is not None:
         # set off
         player.kill_XBMCDirect()
         player.close()
         del player
         if ambibox is not None:
-            if ambibox.connect() == 0:
-                ambibox.disconnect()
+            ambibox.close()
             del ambibox
     del monitor
-    info(__language__(32032))  # @[Ambibox turned off] 
+    del scriptsettings
 
 if __name__ == '__main__':
-    # start_debugger()
-    main()
+    #start_debugger()
+    if not simul:
+        main()
+        info('Ambibox exiting')
+    else:
+        def language(x):
+            return ''
+        __language__ = language
+        infos = [1920, 1080, 1, 2.4, 23.97]
+        xd = XBMCDt(infos)
+        xd.start()
+        time.sleep(10)
+        xd.stop()
+        print 'Done'
