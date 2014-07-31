@@ -168,4 +168,5 @@ def checkhash(fname):
         success = hasher.hexdigest() == chkhash
     return success
 
-main()
+if __name__ == '__main__':
+    main()

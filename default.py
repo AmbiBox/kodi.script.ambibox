@@ -15,7 +15,7 @@
 # *  http://www.gnu.org/copyleft/gpl.html
 # *
 
-#Modules General
+# Modules General
 import os
 import sys
 import mmap
@@ -40,6 +40,7 @@ import xbmcaddon
 import xbmcvfs
 # Modules AmbiBox
 from resources.lib.ambibox import AmbiBox
+
 __language__ = None
 
 if not simul:
@@ -51,33 +52,40 @@ if not simul:
     __language__ = __settings__.getLocalizedString
     __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
     __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
-    __usingMediaInfo__ = False
     mediax = None
     screenx = 0
     screeny = 0
     sar = 0.0
     ambibox = None
     scriptsettings = None
+    kbs = None
     Arprofile_info = namedtuple('Arprofile_info', 'profile_name, aspectratio, lower_lmt, upper_lmt')
+    xbmc_version = 0
 
 
 def start_debugger(remote=False):
     if remote:
-        if xbmcvfs.exists(r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\pycharm-debug.py3k\\'):
-            sys.path.append(r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\pycharm-debug.py3k\\')
+        if xbmcvfs.exists(
+                r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\'
+                r'pycharm-debug.py3k\\'):
+            sys.path.append(
+                r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\'
+                r'pycharm-debug.py3k\\')
             import pydevd
+
             pydevd.settrace('192.168.1.103', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
     else:
         if xbmcvfs.exists(r'C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg'):
             sys.path.append(r'C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
             import pydevd
+
             pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
 
 def chkMediaInfo():
     # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
-    global __usingMediaInfo__
     global mediax
+    __usingMediaInfo__ = False
     if mediax is None:
         mi_url = xbmc.translatePath(os.path.join(__resource__ + '\\mediainfo.dll'))
         if xbmcvfs.exists(mi_url):
@@ -100,7 +108,6 @@ def chkMediaInfo():
                 from resources.lib.media import Media as mediax
             except ImportError:
                 mediax = None
-                __usingMediaInfo__ = False
 
 
 def notification(text, *silence):
@@ -159,190 +166,185 @@ def getStereoscopicMode():
 """
 
 
-def parsexml(fn):
-    if os.path.exists(fn):
-        with open(fn, 'rt') as f:
-            try:
-                tree = ET.parse(f)
-            except ET.ParseError, e:
-                info('Error in keyboard.xml file, skipping keymap processing')
-                info(str(e.message))
-                tree = None
-            return tree
-    else:
-        return None
-
-
-def findkeybyname(element, keyname, modlist):
-    """
-    @type element: xml.etree.ElementTree.Element
-    @type keyname: str
-    @type modlist: list
-    @return:
-    @rtype: xml.etree.ElementTree.Element
-    """
-    keys = element.findall('./%s' % keyname)
-    retkey = None
-    for key in keys:
-        if key.get('mod') is None and len(modlist) == 0:
-            retkey = key
-            break
-        elif len(modlist) == 0 and key.get('mod') is not None:
-            retkey = None
-            break
-        elif len(modlist) != 0 and key.get('mod') is None:
-            retkey = None
-            break
+class KeyboardXml(object):
+    def parsexml(self, fn):
+        if os.path.exists(fn):
+            with open(fn, 'rt') as f:
+                try:
+                    tree = ET.parse(f)
+                except ET.ParseError, e:
+                    info('Error in keyboard.xml file, skipping keymap processing')
+                    info(str(e.message))
+                    tree = None
+                return tree
         else:
-            modstr = key.attrib['mod']
-            mods = modstr.split(',')
-            if Counter(mods) == Counter(modlist):  # compares hashes of strings so that order doesn't matter
+            return None
+
+    def findkeybyname(self, element, keyname, modlist):
+        """
+        @type element: xml.etree.ElementTree.Element
+        @type keyname: str
+        @type modlist: list
+        @return:
+        @rtype: xml.etree.ElementTree.Element
+        """
+        keys = element.findall('./%s' % keyname)
+        retkey = None
+        for key in keys:
+            if key.get('mod') is None and len(modlist) == 0:
                 retkey = key
                 break
-    return retkey
+            elif len(modlist) == 0 and key.get('mod') is not None:
+                retkey = None
+                break
+            elif len(modlist) != 0 and key.get('mod') is None:
+                retkey = None
+                break
+            else:
+                modstr = key.attrib['mod']
+                mods = modstr.split(',')
+                if Counter(mods) == Counter(modlist):  # compares hashes of strings so that order doesn't matter
+                    retkey = key
+                    break
+        return retkey
 
-
-def savexml(tree, fn):
-    tstr = ET.tostring(tree.getroot(), encoding='utf-8', method='xml')
-    xml = xdm.parseString(tstr)
-    uglyXml = xml.toprettyxml(indent='  ')
-    text_re = re.compile('>\n\s+([^<>\s].*?)\n\s+</', re.DOTALL)
-    prettyXml = text_re.sub('>\g<1></', uglyXml)
-    p2 = re.sub(r'\n(\s+\n)+', '\n', prettyXml)
-    p3 = re.sub(r'<\?.+?\?>', r'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'.encode('string_escape'), p2)
-    p4 = p3.encode('utf-8')
-    if xbmcvfs.exists(fn):
-        with open(fn, 'r') as fo:
-            oldxml = fo.read()
-        if Counter(oldxml) != Counter(p4):  # Only make backup and rewrite if new xml is different
-            bakfn = fn + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak.xml'
-            if xbmcvfs.exists(bakfn):
-                xbmcvfs.delete(bakfn)
-            xbmcvfs.rename(fn, bakfn)
+    def savexml(self, tree, fn):
+        tstr = ET.tostring(tree.getroot(), encoding='utf-8', method='xml')
+        xml = xdm.parseString(tstr)
+        uglyXml = xml.toprettyxml(indent='  ')
+        text_re = re.compile('>\n\s+([^<>\s].*?)\n\s+</', re.DOTALL)
+        prettyXml = text_re.sub('>\g<1></', uglyXml)
+        p2 = re.sub(r'\n(\s+\n)+', '\n', prettyXml)
+        p3 = re.sub(r'<\?.+?\?>', r'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'.encode('string_escape'),
+                    p2)
+        p4 = p3.encode('utf-8')
+        if xbmcvfs.exists(fn):
+            with open(fn, 'r') as fo:
+                oldxml = fo.read()
+            if Counter(oldxml) != Counter(p4):  # Only make backup and rewrite if new xml is different
+                bakfn = fn + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak.xml'
+                if xbmcvfs.exists(bakfn):
+                    xbmcvfs.delete(bakfn)
+                xbmcvfs.rename(fn, bakfn)
+                with open(fn, 'w') as fo:
+                    fo.write(p4)
+        else:
             with open(fn, 'w') as fo:
                 fo.write(p4)
-    else:
-        with open(fn, 'w') as fo:
-            fo.write(p4)
 
+    def findkeyswithcmd(self, elementx, commandtext):
+        """
+        @type elementx: xml.etree.ElementTree.Element
+        @type commandtext: str
+        @return:
+        @rtype: xml.etree.ElementTree.Element
+        """
 
-def findkeyswithcmd(elementx, commandtext):
-    """
-    @type elementx: xml.etree.ElementTree.Element
-    @type commandtext: str
-    @return:
-    @rtype: xml.etree.ElementTree.Element
-    """
-
-    keys = [element for element in elementx.iter() if element.text == commandtext]
-    if len(keys) != 0:
-        return keys[0]
-    else:
-        return None
-
-
-def translate_key_settingsxml(key_type):
-    __settings = xbmcaddon.Addon('script.ambibox')
-    checks = ['ctrl', 'shift', 'alt']
-    mod = []
-    for check in checks:
-        if __settings.getSetting(key_type + '_' + check) == 'true':
-            mod.append(check)
-    key = (__settings.getSetting(key_type + '_str')[0:2]).lower()
-    if key[0:1] != 'f':
-        key2 = key[0:1]
-    else:
-        if key[1].isdigit():
-            key2 = key
+        keys = [element for element in elementx.iter() if element.text == commandtext]
+        if len(keys) != 0:
+            return keys[0]
         else:
-            key2 = 'f'
-    ret = [key2, mod]
-    return ret
+            return None
 
-
-def create_element(element, tag, lst, idx=0):
-    if idx == 0:
-        if len(lst) == 0:
-            return ET.SubElement(element, tag)
+    def translate_key_settingsxml(self, key_type):
+        __settings = xbmcaddon.Addon('script.ambibox')
+        checks = ['ctrl', 'shift', 'alt']
+        mod = []
+        for check in checks:
+            if __settings.getSetting(key_type + '_' + check) == 'true':
+                mod.append(check)
+        key = (__settings.getSetting(key_type + '_str')[0:2]).lower()
+        if key[0:1] != 'f':
+            key2 = key[0:1]
         else:
-            return ET.SubElement(element, tag, attrib={'mod': ','.join(lst)})
-    else:
-        myelem = ET.Element(tag)
-        if len(lst) != 0:
-            myelem.attrib = {'mod': ','.join(lst)}
-        return element.insert(idx, myelem)
-
-
-def process_keyboard_settings():
-    try:
-        fn = r"C:\Users\Ken User\AppData\Roaming\XBMC\userdata\keymaps\keyboard.xml"
-        keylst = [translate_key_settingsxml('key_off'), translate_key_settingsxml('key_on')]
-        cmdlst = [r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, off)', r'XBMC.RunScript('
-                  r'special://home\addons\script.ambibox\switch.py, on)']
-        if xbmcvfs.exists(fn):
-            tree = parsexml(fn)
-            if tree is None:
-                return
-            root = tree.getroot()
-            myroot = root.find('./global/keyboard')
-            if myroot is not None:
-                for key, cmd in zip(keylst, cmdlst):
-                    mkey = findkeybyname(myroot, key[0], key[1])
-                    mcmd = findkeyswithcmd(myroot, cmd)
-                    if mcmd is None and mkey is None:  # No key or command set
-                        # Add new key
-                        newkey = create_element(myroot, key[0], key[1])
-                        newkey.text = cmd
-                    elif mkey == mcmd:  # Key already correctly set
-                        continue
-                    elif (mkey is not None and mcmd is not None) and (mkey != mcmd):  # Key in use and other key set
-                        # Remove other key set for command and change key in use to use command
-                        myroot.remove(mcmd)
-                        idx = myroot.getchildren().index(mkey)
-                        comment_element = ET.Comment(ET.tostring(mkey))
-                        myroot.insert(idx, comment_element)
-                        mkey.text = cmd
-                    elif mkey is not None and mcmd is None:  # Key in use, no other key set for command
-                        # Change key to command
-                        idx = myroot.getchildren().index(mkey)
-                        comment_element = ET.Comment(ET.tostring(mkey))
-                        myroot.insert(idx, comment_element)
-                        mkey.text = cmd
-                    elif mcmd is not None and mkey is None:  # Command set for other key, desired key not in use
-                        # Remove mcmd, add new key
-                        myroot.remove(mcmd)
-                        newkey = create_element(myroot, key[0], key[1])
-                        newkey.text = cmd
-                    else:
-                        pass
+            if key[1].isdigit():
+                key2 = key
             else:
-                myroot = root.find('./global')
-                if myroot is not None:  # create keyboard and add two keys
-                    newkb = ET.SubElement(myroot, 'keyboard')
-                    newkb.tail = '\n'
+                key2 = 'f'
+        ret = [key2, mod]
+        return ret
+
+    def create_element(self, element, tag, lst, idx=0):
+        if idx == 0:
+            if len(lst) == 0:
+                return ET.SubElement(element, tag)
+            else:
+                return ET.SubElement(element, tag, attrib={'mod': ','.join(lst)})
+        else:
+            myelem = ET.Element(tag)
+            if len(lst) != 0:
+                myelem.attrib = {'mod': ','.join(lst)}
+            return element.insert(idx, myelem)
+
+    def process_keyboard_settings(self):
+        try:
+            fn = r"C:\Users\Ken User\AppData\Roaming\XBMC\userdata\keymaps\keyboard.xml"
+            keylst = [self.translate_key_settingsxml('key_off'), self.translate_key_settingsxml('key_on')]
+            cmdlst = [r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, off)',
+                      r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, on)']
+            if xbmcvfs.exists(fn):
+                tree = self.parsexml(fn)
+                if tree is None:
+                    return
+                root = tree.getroot()
+                myroot = root.find('./global/keyboard')
+                if myroot is not None:
+                    for key, cmd in zip(keylst, cmdlst):
+                        mkey = self.findkeybyname(myroot, key[0], key[1])
+                        mcmd = self.findkeyswithcmd(myroot, cmd)
+                        if mcmd is None and mkey is None:  # No key or command set
+                            # Add new key
+                            newkey = self.create_element(myroot, key[0], key[1])
+                            newkey.text = cmd
+                        elif mkey == mcmd:  # Key already correctly set
+                            continue
+                        elif (mkey is not None and mcmd is not None) and (mkey != mcmd):  # Key in use and other key set
+                            # Remove other key set for command and change key in use to use command
+                            myroot.remove(mcmd)
+                            idx = myroot.getchildren().index(mkey)
+                            comment_element = ET.Comment(ET.tostring(mkey))
+                            myroot.insert(idx, comment_element)
+                            mkey.text = cmd
+                        elif mkey is not None and mcmd is None:  # Key in use, no other key set for command
+                            # Change key to command
+                            idx = myroot.getchildren().index(mkey)
+                            comment_element = ET.Comment(ET.tostring(mkey))
+                            myroot.insert(idx, comment_element)
+                            mkey.text = cmd
+                        elif mcmd is not None and mkey is None:  # Command set for other key, desired key not in use
+                            # Remove mcmd, add new key
+                            myroot.remove(mcmd)
+                            newkey = self.create_element(myroot, key[0], key[1])
+                            newkey.text = cmd
+                        else:
+                            pass
                 else:
-                    newgl = ET.SubElement(root, 'global')
-                    newkb = ET.SubElement(newgl, 'keyboard')
+                    myroot = root.find('./global')
+                    if myroot is not None:  # create keyboard and add two keys
+                        newkb = ET.SubElement(myroot, 'keyboard')
+                        newkb.tail = '\n'
+                    else:
+                        newgl = ET.SubElement(root, 'global')
+                        newkb = ET.SubElement(newgl, 'keyboard')
+                    for key, cmd in zip(keylst, cmdlst):
+                        newkey = self.create_element(newkb, key[0], key[1])
+                        newkey.text = cmd
+                self.savexml(tree, fn)
+            else:  # create file and write xml
+                root = ET.Element('keymap')
+                newgl = ET.SubElement(root, 'global')
+                newkb = ET.SubElement(newgl, 'keyboard')
                 for key, cmd in zip(keylst, cmdlst):
-                    newkey = create_element(newkb, key[0], key[1])
+                    newkey = self.create_element(newkb, key[0], key[1])
                     newkey.text = cmd
-            savexml(tree, fn)
-        else:  # create file and write xml
-            root = ET.Element('keymap')
-            newgl = ET.SubElement(root, 'global')
-            newkb = ET.SubElement(newgl, 'keyboard')
-            for key, cmd in zip(keylst, cmdlst):
-                newkey = create_element(newkb, key[0], key[1])
-                newkey.text = cmd
-            mytree = ET.ElementTree(root)
-            savexml(mytree, fn)
-        pass
-    except Exception, e:
-        pass
+                mytree = ET.ElementTree(root)
+                self.savexml(mytree, fn)
+            pass
+        except Exception, e:
+            pass
 
 
 class Profiles(object):
-
     def __init__(self):
         self._profile_dict = dict()
 
@@ -558,7 +560,6 @@ class XbmcAmbibox(AmbiBox):
 
 
 class ScriptSettings(object):
-
     def __init__(self):
         self.settings = dict()
         self.aspect_ratio_codes = ['43', '32', '169', '185', '22', '24']
@@ -616,7 +617,7 @@ class ScriptSettings(object):
                 settingid = '%s_%s' % (stereomode, ar_code)
                 profl = __settings__.getSetting(settingid)
                 if profl != 'None':
-                    spfl = settingid[len(settingid)-2:]
+                    spfl = settingid[len(settingid) - 2:]
                     ar = self.ar_dict[spfl]
                     ar_profileinfo = Arprofile_info(profile_name=profl, aspectratio=ar, lower_lmt=ar, upper_lmt=ar)
                     if profl in ambiboxprofiles:
@@ -635,11 +636,11 @@ class ScriptSettings(object):
                 if i == 0:
                     ll = 0.1
                 else:
-                    ll = float((pfl.aspectratio + tempprofiles[i-1].aspectratio)/2)
-                if i == i1-1:
+                    ll = float((pfl.aspectratio + tempprofiles[i - 1].aspectratio) / 2)
+                if i == i1 - 1:
                     ul = 99
                 else:
-                    ul = float((pfl.aspectratio + tempprofiles[i+1].aspectratio)/2)
+                    ul = float((pfl.aspectratio + tempprofiles[i + 1].aspectratio) / 2)
                 new_profile_info = Arprofile_info(profile_name=pfl.profile_name, aspectratio=pfl.aspectratio,
                                                   lower_lmt=ll, upper_lmt=ul)
                 new_profiles.append(new_profile_info)
@@ -699,7 +700,7 @@ class ScriptSettings(object):
             for setn in sets2chk:
                 pname = __settings__.getSetting(setn)
                 if pname != 'None':
-                    if not(pname in pfls):
+                    if not (pname in pfls):
                         dirty = True
                         __settings__.setSetting(setn, 'None')
                         info('Missing profile %s set to None' % setn)
@@ -739,41 +740,7 @@ class ScriptSettings(object):
         self.settings[name] = value
 
 
-"""
-class ProfileManager():
-
-    def start(self):
-        __settings = xbmcaddon.Addon("script.ambibox")
-        pcnt = self.chkAmibiboxInstalled()
-        info('%s profiles found in registry' % pcnt)
-        self.chkAmbiboxRunning()
-        if self.AmbiboxRunning:
-            self.lightSwitch(self.LIGHTS_OFF)
-        if (pcnt >= 0) and (__settings.getSetting('start_ambibox')) == 'true':
-            if self.AmbiboxRunning is False:
-                success = self.startAmbibox()
-                if not success:
-                    notification(__language__(32008))  # @[Ambibox could not be started] 
-                    info('Could not start AmbiBox executable')
-                    sys.exit()
-        if pcnt == 0:
-            notification(__language__(32006))  # @[No profiles configured in Ambibox] 
-            info('No profiles found in Ambibox')
-        elif pcnt == -1:
-            notification(__language__(32007))  # @[AmbiBox installation not found: exiting script] 
-            info('Ambibox installation not found: terminating script')
-            sys.exit()
-        else:
-            if self.AmbiboxRunning:
-                self.updateprofilesettings()
-                self.chkProfileSettings()
-                self.get_profile_types_from_reg()
-        self.setProfile(__settings.getSetting('default_enable'), __settings.getSetting('default_profile'))
-"""
-
-
 class CapturePlayer(xbmc.Player):
-
     def __init__(self, *args):
         self.re3D = re.compile("[-. _]3d[-. _]", re.IGNORECASE)
         self.reTAB = re.compile("[-. _]h?tab[-. _]", re.IGNORECASE)
@@ -787,8 +754,8 @@ class CapturePlayer(xbmc.Player):
         menu = ambibox.get_profiles()
         menu.append(__language__(32021))  # @[Backlight off] 
         menu.append(__language__(32022))  # @[Backlight on] 
-        off = len(menu)-2
-        on = len(menu)-1
+        off = len(menu) - 2
+        on = len(menu) - 1
         mquit = False
         xbmc.sleep(100)
         selected = xbmcgui.Dialog().select(__language__(32020), menu)  # @[Select profile] 
@@ -807,17 +774,17 @@ class CapturePlayer(xbmc.Player):
 
     def onPlayBackResumed(self):
         if self.getPlayingFile() != self.playing_file:
-            if isinstance(self.xd, XBMCDt):
-                if self.xd.is_alive():
-                    self.kill_XBMCDirect()
+            self.onPlayBackEnded()
             self.onPlayBackStarted()
 
     def onPlayBackStarted(self):
+        self.onPBSfired = True
         if ambibox.connect() != 0:
             return
-        self.onPBSfired = True
-        if not (self.isPlayingAudio() or self.isPlayingVideo()):
+        counter = 0
+        while (not (self.isPlayingAudio() or self.isPlayingVideo())) and counter < 20:
             xbmc.sleep(500)
+            counter += 1
         if self.isPlayingAudio():
             ambibox.set_profile(scriptsettings.settings["audio_enable"],
                                 enable=scriptsettings.settings["audio_profile"])
@@ -825,6 +792,7 @@ class CapturePlayer(xbmc.Player):
             try:
                 self.playing_file = self.getPlayingFile()
             except:
+                info('Error retrieving video file from xbmc.player')
                 return
             infos = [0, 0, 1, 0, 0]
             mi_called = False
@@ -866,11 +834,11 @@ class CapturePlayer(xbmc.Player):
             if infos[3] == 0:
                 rc = xbmc.RenderCapture()
                 infos[3] = rc.getAspectRatio()
-                if not(0.95 < infos[3] < 1.05) and infos[3] != 0:
+                if not (0.95 < infos[3] < 1.05) and infos[3] != 0:
                     info('Aspect ratio determined by XBMC.Capture = %s' % infos[3])
                 else:
-            # Fallback Method
-                    infos[3] = float(screenx)/float(screeny)
+                    # Fallback Method
+                    infos[3] = float(screenx) / float(screeny)
                     info('Aspect ratio not able to be determined - using screen AR = %s' % infos[3])
 
             if scriptsettings.settings['3D_enable'] is True:
@@ -905,7 +873,7 @@ class CapturePlayer(xbmc.Player):
 
             videomode = scriptsettings.settings["video_choice"]
 
-            if videomode == 0:    # Use Default Video Profile
+            if videomode == 0:  # Use Default Video Profile
                 info('Using default video profile')
                 ambibox.set_profile(scriptsettings.settings["video_profile"])
             elif videomode == 1:  # Autoswitch
@@ -915,10 +883,10 @@ class CapturePlayer(xbmc.Player):
                     info('Autoswitched on AR')
                 else:
                     info("Error retrieving DAR from video file")
-            elif videomode == 2:   # Show menu
+            elif videomode == 2:  # Show menu
                 self.showmenu()
                 info('Using menu for profile pick')
-            elif videomode == 3:   # Turn off
+            elif videomode == 3:  # Turn off
                 info('User set lights off for video')
                 ambibox.lightSwitch(ambibox.LIGHTS_OFF)
 
@@ -964,22 +932,22 @@ class CapturePlayer(xbmc.Player):
                 maxq = infos[1]
                 if quality == 0:
                     infos[1] = minq
-                    infos[0] = int(infos[1]*infos[3])
+                    infos[0] = int(infos[1] * infos[3])
                 elif quality == 1:
-                    infos[1] = int(minq + ((maxq - minq)/3))
-                    infos[0] = int(infos[1]*infos[3])
+                    infos[1] = int(minq + ((maxq - minq) / 3))
+                    infos[0] = int(infos[1] * infos[3])
                 elif quality == 2:
-                    infos[1] = int(minq + (2*(maxq - minq)/3))
-                    infos[0] = int(infos[1]*infos[3])
+                    infos[1] = int(minq + (2 * (maxq - minq) / 3))
+                    infos[0] = int(infos[1] * infos[3])
                 else:
                     if infos[3] > sar:
                         if infos[1] == 0:
                             infos[1] = screeny
-                        infos[0] = int(infos[1]*infos[3])
+                        infos[0] = int(infos[1] * infos[3])
                     else:
                         if infos[0] == 0:
                             infos[0] = screenx
-                        infos[1] = int(infos[0]/infos[3])
+                        infos[1] = int(infos[0] / infos[3])
 
                 # Get other settings associated with XBMC Direct
 
@@ -1065,7 +1033,6 @@ class CapturePlayer(xbmc.Player):
 
 
 class XbmcMonitor(xbmc.Monitor):
-
     def __init__(self):
         super(XbmcMonitor, self).__init__()
 
@@ -1089,12 +1056,11 @@ class XbmcMonitor(xbmc.Monitor):
         if scriptsettings.settings['start_ambibox'] is True and ambibox.is_running is False:
             ambibox.start_ambiboxw()
         chkMediaInfo()
-        if __settings__.getSetting('key_use'):
-            process_keyboard_settings()
+        if scriptsettings.settings['key_use']:
+            kbs.process_keyboard_settings()
 
 
 class XBMCDt(threading.Thread):
-
     def __init__(self, infos, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
@@ -1113,7 +1079,6 @@ class XBMCDt(threading.Thread):
 
 
 class XBMCD_normal(object):
-
     def __init__(self, infos, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
@@ -1155,7 +1120,7 @@ class XBMCD(object):
                 if self.playing_file != current_file:
                     info('XBMCD restarting due to file change')
                     self.run()
-            return not(self.player.isPlaying())
+            return not (self.player.isPlaying())
         elif self.runtype == self.TYPE_THREADED:
             return self.killswitch
 
@@ -1184,7 +1149,7 @@ class XBMCD(object):
         if sfps == 0:
             sfps = float(xbmc.getInfoLabel('System.FPS'))
         info('Initial video framerate reported as %s' % str(sfps))
-        tpf = int(1000.0/sfps)
+        tpf = int(1000.0 / sfps)
         sleeptime = int(0.1 * tpf)
         try:
             self.inDataMap = mmap.mmap(0, length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
@@ -1235,7 +1200,7 @@ class XBMCD(object):
                         self.inDataMap[8] = (chr((length >> 8) & 0xff))
                         self.inDataMap[9] = (chr((length >> 16) & 0xff))
                         self.inDataMap[10] = (chr((length >> 24) & 0xff))
-                    self.inDataMap[11:(11+length)] = str(image)
+                    self.inDataMap[11:(11 + length)] = str(image)
                     # write first byte to indicate we finished writing the data
                     self.inDataMap[0] = (chr(240))
                     counter += 1
@@ -1272,7 +1237,7 @@ class XBMCD(object):
         if sfps == 0:
             sfps = float(xbmc.getInfoLabel('System.FPS'))
         info('Initial video framerate reported as %s' % str(sfps))
-        tpf = int(1000.0/sfps)
+        tpf = int(1000.0 / sfps)
         sleeptime = int(0.1 * tpf)
         try:
             self.inDataMap = mmap.mmap(0, length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
@@ -1287,7 +1252,7 @@ class XBMCD(object):
                 return
         sumtime = 0
         ctime = 0
-        tfactor = self.throttle/100.0
+        tfactor = self.throttle / 100.0
         evalframenum = -1
         capture.capture(width, height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
@@ -1344,13 +1309,13 @@ class XBMCD(object):
             sumtime += t.msecs
             if counter == 50:
                 sfps = float(xbmc.getInfoLabel('System.FPS'))  # wait for 50 frames before getting fps
-                tpf = int(1000.0/sfps)
+                tpf = int(1000.0 / sfps)
                 evalframenum = int(sfps * 10.0)  # evaluate how much to sleep over first 10s of video
             if counter == evalframenum:
-                dfps = 1 + (sfps - (1/tfactor)) * tfactor  # calculates a desired fps based on throttle val
-                sleeptime = int(0.95 * ((1000.0/dfps) - (ctime/(1000.0 * counter))))  # 95% of calc sleep
+                dfps = 1 + (sfps - (1 / tfactor)) * tfactor  # calculates a desired fps based on throttle val
+                sleeptime = int(0.95 * ((1000.0 / dfps) - (ctime / (1000.0 * counter))))  # 95% of calc sleep
                 info('Over first %s frames, avg process time for render = %s microsecs'
-                     % (counter, int(float(ctime)/float(counter))))
+                     % (counter, int(float(ctime) / float(counter))))
                 if sleeptime < 10:
                     info('Capture framerate limited by limited system speed')
                     sleeptime = 10
@@ -1362,8 +1327,8 @@ class XBMCD(object):
         if evalframenum != -1:
             if counter > evalframenum and sumtime != 0 and counter != 0:
                 counter += -evalframenum
-                ptime = int(float(ctime)/float(counter))
-                fps = float(counter)*1000/float(sumtime)
+                ptime = int(float(ctime) / float(counter))
+                fps = float(counter) * 1000 / float(sumtime)
                 pcnt_sleep = float(sleeptime) * fps * 0.1
                 info('XBMCdirect captured %s frames with mean of %s fps at %s %% throttle'
                      % (counter, fps, self.throttle))
@@ -1378,7 +1343,6 @@ class XBMCD(object):
 
 
 class Timer(object):
-
     def __init__(self):
         super(Timer, self).__init__()
 
@@ -1393,13 +1357,31 @@ class Timer(object):
         self.msecs = self.secs * 1000.0
 
 
-def main():
-    global ambibox, screenx, screeny, sar, scriptsettings
+def simulate():
+    global __language__
+
+    def language(x):
+        return 'blank'
+
+    __language__ = language
+    infos = [1920, 1080, 1, 2.4, 23.97]
+    xd = XBMCDt(infos)
+    xd.start()
+    time.sleep(10)
+    xd.stop()
+    print 'Done'
+
+
+def startup():
+    global ambibox, screenx, screeny, sar, scriptsettings, kbs, xbmc_version
     user32 = ctypes.windll.user32
     screenx = user32.GetSystemMetrics(0)
     screeny = user32.GetSystemMetrics(1)
     del user32
-    sar = float(screenx)/float(screeny)
+    if screeny != 0:
+        sar = float(screenx) / float(screeny)
+    else:
+        sar = 16.0 / 9.0
     try:
         xbmc_version = float(str(xbmc.getInfoLabel("System.BuildVersion"))[0:4])
     except ValueError:
@@ -1410,14 +1392,20 @@ def main():
         ambibox.start_ambiboxw()
     scriptsettings = ScriptSettings()
     if scriptsettings.settings['key_use']:
-        process_keyboard_settings()
+        kbs = KeyboardXml()
+        kbs.process_keyboard_settings()
+
+
+def main():
+    global ambibox, scriptsettings
+    info('Service Started - ver %s' % __version__)
+    startup()
     player = None
     monitor = XbmcMonitor()
     while not xbmc.abortRequested:
         if player is None:
             if ambibox.connect() == 0:
-                notification(__language__(32030))  # @[Connected to AmbiBox] 
-                info('Started - ver %s' % __version__)
+                notification(__language__(32030))  # @[Connected to AmbiBox]
                 ambibox.switch_to_default_profile()
                 player = CapturePlayer()
             xbmc.sleep(1000)
@@ -1430,7 +1418,6 @@ def main():
                     player.onPlayBackStarted()
             xbmc.sleep(250)
     if player is not None:
-        # set off
         player.kill_XBMCDirect()
         player.close()
         del player
@@ -1440,18 +1427,11 @@ def main():
     del monitor
     del scriptsettings
 
+
 if __name__ == '__main__':
     #start_debugger()
     if not simul:
         main()
         info('Ambibox exiting')
     else:
-        def language(x):
-            return ''
-        __language__ = language
-        infos = [1920, 1080, 1, 2.4, 23.97]
-        xd = XBMCDt(infos)
-        xd.start()
-        time.sleep(10)
-        xd.stop()
-        print 'Done'
+        simulate()
