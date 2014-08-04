@@ -1382,6 +1382,8 @@ def main():
     startup()
     player = None
     monitor = XbmcMonitor()
+    chk = 13.0 <= xbmc_version < 13.11
+    count = 0
     while not xbmc.abortRequested:
         if player is None:
             if ambibox.connect() == 0:
@@ -1392,10 +1394,12 @@ def main():
         else:
             # This is to get around a bug where onPlayBackStarted is not fired for external players present
             # in releases up to Gotham 13.1
-            if 13.0 <= xbmc_version < 13.11:
+            if chk is True and count > 8:
                 if player.isPlayingVideo() and not player.onPBSfired:
                     info('Firing missed onPlayBackStarted event')
                     player.onPlayBackStarted()
+                    count = 0
+            count += 1
             xbmc.sleep(250)
     if player is not None:
         player.kill_XBMCDirect()
