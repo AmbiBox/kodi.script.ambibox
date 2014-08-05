@@ -19,9 +19,11 @@
 
 import os
 import sys
+
 import xbmc
 import xbmcaddon
 import xbmcgui
+
 
 try:
     __addon__ = xbmcaddon.Addon('script.ambibox')

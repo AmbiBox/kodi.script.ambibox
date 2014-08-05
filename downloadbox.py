@@ -14,15 +14,17 @@
 # *  the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 # *  http://www.gnu.org/copyleft/gpl.html
 # *
-import xbmc
-import xbmcgui
-import xbmcvfs
-import xbmcaddon
 import os
 import urllib2
 import hashlib
 import sys
 from _winreg import *
+
+import xbmc
+import xbmcgui
+import xbmcvfs
+import xbmcaddon
+
 
 __addon__ = xbmcaddon.Addon('script.ambibox')
 __cwd__ = xbmc.translatePath(__addon__.getAddonInfo('path')).decode('utf-8')

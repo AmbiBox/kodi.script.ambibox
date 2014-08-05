@@ -18,9 +18,11 @@
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 import os
+from _winreg import *
+
 import xbmcaddon
 import xbmcvfs
-from _winreg import *
+
 
 __addon__ = xbmcaddon.Addon()
 __cwd__ = __addon__.getAddonInfo('path')

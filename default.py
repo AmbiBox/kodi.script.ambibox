@@ -27,10 +27,9 @@ from operator import itemgetter
 import ctypes
 import threading
 from xml.etree import cElementTree as ET
-from collections import Counter, namedtuple
-import xml.dom.minidom as xdm
+from collections import namedtuple
 # Modules XBMC
-simul = False
+simul = 'XBMC' not in sys.executable
 if simul:
     import xbmcsim as xbmc
 else:
@@ -40,6 +39,9 @@ import xbmcaddon
 import xbmcvfs
 # Modules AmbiBox
 from resources.lib.ambibox import AmbiBox
+from resources.lib.abxtimer import Timer
+from resources.lib.xbmcoutput import notification, debug, info
+from resources.lib.keyboardxml import KeyboardXml
 
 __language__ = None
 
@@ -72,7 +74,6 @@ def start_debugger(remote=False):
                 r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\'
                 r'pycharm-debug.py3k\\')
             import pydevd
-
             pydevd.settrace('192.168.1.103', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
     else:
         if xbmcvfs.exists(r'C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg'):
@@ -82,7 +83,7 @@ def start_debugger(remote=False):
             pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
 
-def chkMediaInfo():
+def chk_mediainfo():
     # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
     global mediax
     __usingMediaInfo__ = False
@@ -108,267 +109,6 @@ def chkMediaInfo():
                 from resources.lib.media import Media as mediax
             except ImportError:
                 mediax = None
-
-
-def notification(text, *silence):
-    """
-    Display an XBMC notification box, optionally turn off sound associated with it
-    @type text: str
-    @type silence: bool
-    """
-    if not simul:
-        text = text.encode('utf-8')
-        info(text)
-        if __settings__.getSetting("notification") == 'true':
-            icon = __settings__.getAddonInfo("icon")
-            smallicon = icon.encode("utf-8")
-            # xbmc.executebuiltin('Notification(AmbiBox,' + text + ',1000,' + smallicon + ')')
-            dialog = xbmcgui.Dialog()
-            if silence:
-                dialog.notification('Ambibox', text, smallicon, 1000, False)
-            else:
-                dialog.notification('Ambibox', text, smallicon, 1000, True)
-    else:
-        print text
-
-
-def debug(txt):
-    if isinstance(txt, str):
-        txt = txt.decode("utf-8")
-    message = u"### [%s] - %s" % (__scriptname__, txt)
-    xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGDEBUG)
-
-
-def info(txt):
-    if not simul:
-        if isinstance(txt, str):
-            txt = txt.decode("utf-8")
-        message = u"### [%s] - %s" % (__scriptname__, txt)
-        xbmc.log(msg=message.encode("utf-8"), level=xbmc.LOGNOTICE)
-    else:
-        print txt
-
-
-"""
-def getStereoscopicMode():
-    query = '{"jsonrpc": "2.0", "method": "GUI.GetProperties", "params": {"properties": ["stereoscopicmode"]}, "id": 1}'
-    result = xbmc.executeJSONRPC(query)
-    jsonr = jloads(result)
-    print jsonr
-    ret = 'unknown'
-    if jsonr.has_key('result'):
-        if jsonr['result'].has_key('stereoscopicmode'):
-            if jsonr['result']['stereoscopicmode'].has_key('mode'):
-                ret = jsonr['result']['stereoscopicmode']['mode'].encode('utf-8')
-    #"off", "split_vertical", "split_horizontal", "row_interleaved", "hardware_based", "anaglyph_cyan_red",
-     "anaglyph_green_magenta", "monoscopic"
-    return ret
-
-
-class Singleton(type):
-    _instances = {}
-    _lock = threading.Lock()
-
-    def __call__(cls, *args, **kwargs):
-
-        # if cls not in cls._instances:
-        #     with cls._lock:
-        #         cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        # return cls._instances[cls]
-
-        if cls in cls._instances:
-            if 'new' in kwargs:
-                if kwargs['new'] is True:
-                    with cls._lock:
-                        if cls in cls._instances:
-                            tmp = cls._instances.pop(cls, None)
-                            del tmp
-                            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        else:
-            with cls._lock:
-                if cls not in cls._instances:
-                    cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-"""
-
-
-class KeyboardXml(object):
-
-    def parsexml(self, fn):
-        if os.path.exists(fn):
-            with open(fn, 'rt') as f:
-                try:
-                    tree = ET.parse(f)
-                except ET.ParseError, e:
-                    info('Error in keyboard.xml file, skipping keymap processing')
-                    info(str(e.message))
-                    tree = None
-                return tree
-        else:
-            return None
-
-    def findkeybyname(self, element, keyname, modlist):
-        """
-        @type element: xml.etree.ElementTree.Element
-        @type keyname: str
-        @type modlist: list
-        @return:
-        @rtype: xml.etree.ElementTree.Element
-        """
-        keys = element.findall('./%s' % keyname)
-        retkey = None
-        for key in keys:
-            if key.get('mod') is None and len(modlist) == 0:
-                retkey = key
-                break
-            elif len(modlist) == 0 and key.get('mod') is not None:
-                retkey = None
-                break
-            elif len(modlist) != 0 and key.get('mod') is None:
-                retkey = None
-                break
-            else:
-                modstr = key.attrib['mod']
-                mods = modstr.split(',')
-                if Counter(mods) == Counter(modlist):  # compares hashes of strings so that order doesn't matter
-                    retkey = key
-                    break
-        return retkey
-
-    def savexml(self, tree, fn):
-        tstr = ET.tostring(tree.getroot(), encoding='utf-8', method='xml')
-        xml = xdm.parseString(tstr)
-        uglyXml = xml.toprettyxml(indent='  ')
-        text_re = re.compile('>\n\s+([^<>\s].*?)\n\s+</', re.DOTALL)
-        prettyXml = text_re.sub('>\g<1></', uglyXml)
-        p2 = re.sub(r'\n(\s+\n)+', '\n', prettyXml)
-        p3 = re.sub(r'<\?.+?\?>', r'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'.encode('string_escape'),
-                    p2)
-        p4 = p3.encode('utf-8')
-        if xbmcvfs.exists(fn):
-            with open(fn, 'r') as fo:
-                oldxml = fo.read()
-            if Counter(oldxml) != Counter(p4):  # Only make backup and rewrite if new xml is different
-                bakfn = fn + '-' + time.strftime('%Y%m%d-%H%M', time.localtime()) + '.bak.xml'
-                if xbmcvfs.exists(bakfn):
-                    xbmcvfs.delete(bakfn)
-                xbmcvfs.rename(fn, bakfn)
-                with open(fn, 'w') as fo:
-                    fo.write(p4)
-        else:
-            with open(fn, 'w') as fo:
-                fo.write(p4)
-
-    def findkeyswithcmd(self, elementx, commandtext):
-        """
-        @type elementx: xml.etree.ElementTree.Element
-        @type commandtext: str
-        @return:
-        @rtype: xml.etree.ElementTree.Element
-        """
-
-        keys = [element for element in elementx.iter() if element.text == commandtext]
-        if len(keys) != 0:
-            return keys[0]
-        else:
-            return None
-
-    def translate_key_settingsxml(self, key_type):
-        __settings = xbmcaddon.Addon('script.ambibox')
-        checks = ['ctrl', 'shift', 'alt']
-        mod = []
-        for check in checks:
-            if __settings.getSetting(key_type + '_' + check) == 'true':
-                mod.append(check)
-        key = (__settings.getSetting(key_type + '_str')[0:2]).lower()
-        if key[0:1] != 'f':
-            key2 = key[0:1]
-        else:
-            if key[1].isdigit():
-                key2 = key
-            else:
-                key2 = 'f'
-        ret = [key2, mod]
-        return ret
-
-    def create_element(self, element, tag, lst, idx=0):
-        if idx == 0:
-            if len(lst) == 0:
-                return ET.SubElement(element, tag)
-            else:
-                return ET.SubElement(element, tag, attrib={'mod': ','.join(lst)})
-        else:
-            myelem = ET.Element(tag)
-            if len(lst) != 0:
-                myelem.attrib = {'mod': ','.join(lst)}
-            return element.insert(idx, myelem)
-
-    def process_keyboard_settings(self):
-        try:
-            fn = r"C:\Users\Ken User\AppData\Roaming\XBMC\userdata\keymaps\keyboard.xml"
-            keylst = [self.translate_key_settingsxml('key_off'), self.translate_key_settingsxml('key_on')]
-            cmdlst = [r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, off)',
-                      r'XBMC.RunScript(special://home\addons\script.ambibox\switch.py, on)']
-            if xbmcvfs.exists(fn):
-                tree = self.parsexml(fn)
-                if tree is None:
-                    return
-                root = tree.getroot()
-                myroot = root.find('./global/keyboard')
-                if myroot is not None:
-                    for key, cmd in zip(keylst, cmdlst):
-                        mkey = self.findkeybyname(myroot, key[0], key[1])
-                        mcmd = self.findkeyswithcmd(myroot, cmd)
-                        if mcmd is None and mkey is None:  # No key or command set
-                            # Add new key
-                            newkey = self.create_element(myroot, key[0], key[1])
-                            newkey.text = cmd
-                        elif mkey == mcmd:  # Key already correctly set
-                            continue
-                        elif (mkey is not None and mcmd is not None) and (mkey != mcmd):  # Key in use and other key set
-                            # Remove other key set for command and change key in use to use command
-                            myroot.remove(mcmd)
-                            idx = myroot.getchildren().index(mkey)
-                            comment_element = ET.Comment(ET.tostring(mkey))
-                            myroot.insert(idx, comment_element)
-                            mkey.text = cmd
-                        elif mkey is not None and mcmd is None:  # Key in use, no other key set for command
-                            # Change key to command
-                            idx = myroot.getchildren().index(mkey)
-                            comment_element = ET.Comment(ET.tostring(mkey))
-                            myroot.insert(idx, comment_element)
-                            mkey.text = cmd
-                        elif mcmd is not None and mkey is None:  # Command set for other key, desired key not in use
-                            # Remove mcmd, add new key
-                            myroot.remove(mcmd)
-                            newkey = self.create_element(myroot, key[0], key[1])
-                            newkey.text = cmd
-                        else:
-                            pass
-                else:
-                    myroot = root.find('./global')
-                    if myroot is not None:  # create keyboard and add two keys
-                        newkb = ET.SubElement(myroot, 'keyboard')
-                        newkb.tail = '\n'
-                    else:
-                        newgl = ET.SubElement(root, 'global')
-                        newkb = ET.SubElement(newgl, 'keyboard')
-                    for key, cmd in zip(keylst, cmdlst):
-                        newkey = self.create_element(newkb, key[0], key[1])
-                        newkey.text = cmd
-                self.savexml(tree, fn)
-            else:  # create file and write xml
-                root = ET.Element('keymap')
-                newgl = ET.SubElement(root, 'global')
-                newkb = ET.SubElement(newgl, 'keyboard')
-                for key, cmd in zip(keylst, cmdlst):
-                    newkey = self.create_element(newkb, key[0], key[1])
-                    newkey.text = cmd
-                mytree = ET.ElementTree(root)
-                self.savexml(mytree, fn)
-            pass
-        except Exception, e:
-            pass
 
 
 class Profiles(object):
@@ -804,6 +544,148 @@ class CapturePlayer(xbmc.Player):
             self.onPlayBackEnded()
             self.onPlayBackStarted()
 
+    def get_aspect_ratio(self):
+        try:
+            self.playing_file = self.getPlayingFile()
+        except:
+            info('Error retrieving video file from xbmc.player')
+            return
+        infos = [0, 0, 1, 0, 0]
+        self.mi_called = False
+        # Get aspect ratio
+        # First try MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
+
+        #MediaInfo Method
+        if mediax is not None:
+            if self.playing_file[0:3] != 'pvr':  # Cannot use for LiveTV stream
+                if xbmcvfs.exists(self.playing_file):
+                    try:
+                        infos = mediax().getInfos(self.playing_file)
+                        self.mi_called = True
+                    except:
+                        infos = [0, 0, 1, 0, 0]
+                    else:
+                        if infos[3] != 0:
+                            info('Aspect ratio determined by mediainfo.dll = % s' % infos[3])
+                        else:
+                            info('mediainfo.dll returned AR = 0')
+                else:
+                    infos = [0, 0, 1, 0, 0]
+            else:
+                xbmc.sleep(1000)
+
+        #Info Label Method
+        if infos[3] == 0:
+            while xbmc.getInfoLabel("VideoPlayer.VideoAspect") is None:
+                xbmc.sleep(500)
+            vp_ar = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
+            try:
+                infos[3] = float(vp_ar)
+            except TypeError:
+                infos[3] = float(0)
+            else:
+                info('Aspect ratio determined by InfoLabel = %s' % vp_ar)
+
+        # Capture Method
+        if infos[3] == 0:
+            rc = xbmc.RenderCapture()
+            infos[3] = rc.getAspectRatio()
+            if not (0.95 < infos[3] < 1.05) and infos[3] != 0:
+                info('Aspect ratio determined by XBMC.Capture = %s' % infos[3])
+            else:
+                # Fallback Method
+                infos[3] = float(screenx) / float(screeny)
+                info('Aspect ratio not able to be determined - using screen AR = %s' % infos[3])
+        return infos
+
+    def get_stereo_format(self):
+        if scriptsettings.settings['3D_enable'] is True:
+            # Get Stereoscopic Information
+            # Use infoLabels
+            #sm2 = getStereoscopicMode()
+            stereomode = xbmc.getInfoLabel("VideoPlayer.StereoscopicMode")
+            vidfmt = ''
+            if stereomode == 'top_bottom':
+                vidfmt = '3DT'
+            elif stereomode == 'left_right':
+                vidfmt = '3DS'
+            else:
+                m = self.re3D.search(self.playing_file)
+                if m:
+                    n = self.reTAB.search(self.playing_file)
+                    if n:
+                        vidfmt = "3DT"
+                    else:
+                        n = self.reSBS.search(self.playing_file)
+                        if n:
+                            vidfmt = "3DS"
+                        else:
+                            info("Error in 3D filename - using default settings")
+                            ambibox.set_profile(scriptsettings["video_profile"])
+                else:
+                    vidfmt = "2D"
+        else:
+            vidfmt = "2D"
+        return vidfmt
+
+    def get_dimensions_for_XBMCD(self, infos):
+        # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
+        # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
+        if ((infos[0] == 0) or (infos[1] == 0)) and (mediax is not None) and not self.mi_called:
+            xxx = self.getPlayingFile()
+            if xxx[0:3] != 'pvr':  # Cannot use for LiveTV stream
+                if xbmcvfs.exists(xxx):
+                    try:
+                        infos = mediax().getInfos(xxx)
+                    except:
+                        infos = [0, 0, 1, 0]
+
+        # InfoLabel Method
+        if (infos[0] == 0) or (infos[1] == 0):
+            vp_res = xbmc.getInfoLabel("VideoPlayer.VideoResolution")
+            if str(vp_res).lower() == '4k':
+                vp_res_int = 2160
+            else:
+                try:
+                    vp_res_int = int(vp_res)
+                except ValueError or TypeError:
+                    vp_res_int = 0
+            if vp_res_int != 0 and infos[3] != 0:
+                if infos[3] > 1.7778:
+                    infos[0] = int(vp_res_int * 1.7778)
+                    infos[1] = int(infos[0] / infos[3])
+                else:
+                    infos[0] = int(infos[3] * vp_res_int)
+                    infos[1] = vp_res_int
+        # Fallback
+        if (infos[0] == 0) or (infos[1] == 0):
+            infos[0] = screenx
+            infos[1] = screeny
+
+        # Set quality
+        quality = scriptsettings.settings['directXBMC_quality']
+        minq = 32
+        maxq = infos[1]
+        if quality == 0:
+            infos[1] = minq
+            infos[0] = int(infos[1] * infos[3])
+        elif quality == 1:
+            infos[1] = int(minq + ((maxq - minq) / 3))
+            infos[0] = int(infos[1] * infos[3])
+        elif quality == 2:
+            infos[1] = int(minq + (2 * (maxq - minq) / 3))
+            infos[0] = int(infos[1] * infos[3])
+        else:
+            if infos[3] > sar:
+                if infos[1] == 0:
+                    infos[1] = screeny
+                infos[0] = int(infos[1] * infos[3])
+            else:
+                if infos[0] == 0:
+                    infos[0] = screenx
+                infos[1] = int(infos[0] / infos[3])
+        return infos, quality
+
     def onPlayBackStarted(self):
         self.onPBSfired = True
         if ambibox.connect() != 0:
@@ -816,90 +698,13 @@ class CapturePlayer(xbmc.Player):
             ambibox.set_profile(scriptsettings.settings["audio_enable"],
                                 enable=scriptsettings.settings["audio_profile"])
         if self.isPlayingVideo():
-            try:
-                self.playing_file = self.getPlayingFile()
-            except:
-                info('Error retrieving video file from xbmc.player')
-                return
-            infos = [0, 0, 1, 0, 0]
-            mi_called = False
-            # Get aspect ratio
-            # First try MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
 
-            #MediaInfo Method
-            if mediax is not None:
-                if self.playing_file[0:3] != 'pvr':  # Cannot use for LiveTV stream
-                    if xbmcvfs.exists(self.playing_file):
-                        try:
-                            infos = mediax().getInfos(self.playing_file)
-                            mi_called = True
-                        except:
-                            infos = [0, 0, 1, 0, 0]
-                        else:
-                            if infos[3] != 0:
-                                info('Aspect ratio determined by mediainfo.dll = % s' % infos[3])
-                            else:
-                                info('mediainfo.dll returned AR = 0')
-                    else:
-                        infos = [0, 0, 1, 0, 0]
-                else:
-                    xbmc.sleep(1000)
+            infos = self.get_aspect_ratio()
+            vidfmt = self.get_stereo_format()
 
-            #Info Label Method
-            if infos[3] == 0:
-                while xbmc.getInfoLabel("VideoPlayer.VideoAspect") is None:
-                    xbmc.sleep(500)
-                vp_ar = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
-                try:
-                    infos[3] = float(vp_ar)
-                except TypeError:
-                    infos[3] = float(0)
-                else:
-                    info('Aspect ratio determined by InfoLabel = %s' % vp_ar)
-
-            # Capture Method
-            if infos[3] == 0:
-                rc = xbmc.RenderCapture()
-                infos[3] = rc.getAspectRatio()
-                if not (0.95 < infos[3] < 1.05) and infos[3] != 0:
-                    info('Aspect ratio determined by XBMC.Capture = %s' % infos[3])
-                else:
-                    # Fallback Method
-                    infos[3] = float(screenx) / float(screeny)
-                    info('Aspect ratio not able to be determined - using screen AR = %s' % infos[3])
-
-            if scriptsettings.settings['3D_enable'] is True:
-                # Get Stereoscopic Information
-                # Use infoLabels
-                #sm2 = getStereoscopicMode()
-                stereomode = xbmc.getInfoLabel("VideoPlayer.StereoscopicMode")
-                vidfmt = ''
-                if stereomode == 'top_bottom':
-                    vidfmt = '3DT'
-                elif stereomode == 'left_right':
-                    vidfmt = '3DS'
-                else:
-                    m = self.re3D.search(self.playing_file)
-                    if m:
-                        n = self.reTAB.search(self.playing_file)
-                        if n:
-                            vidfmt = "3DT"
-                        else:
-                            n = self.reSBS.search(self.playing_file)
-                            if n:
-                                vidfmt = "3DS"
-                            else:
-                                info("Error in 3D filename - using default settings")
-                                ambibox.set_profile(scriptsettings["video_profile"])
-                    else:
-                        vidfmt = "2D"
-            else:
-                vidfmt = "2D"
-
-            # Get video mode from settings
+            # Switch profile
 
             videomode = scriptsettings.settings["video_choice"]
-
             if videomode == 0:  # Use Default Video Profile
                 info('Using default video profile')
                 ambibox.set_profile(scriptsettings.settings["video_profile"])
@@ -917,67 +722,13 @@ class CapturePlayer(xbmc.Player):
                 info('User set lights off for video')
                 ambibox.lightSwitch(ambibox.LIGHTS_OFF)
 
+            # XBMC Direct
+
             profile_is_XBMCDirect = scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile)
-
             if profile_is_XBMCDirect is True:
-                # If using XBMCDirect, get video dimensions, some guesswork needed for Infolabel method
-                # May need to use guessed ratio other than 1.778 as 4K video becomes more prevalent
 
-                if ((infos[0] == 0) or (infos[1] == 0)) and (mediax is not None) and not mi_called:
-                    xxx = self.getPlayingFile()
-                    if xxx[0:3] != 'pvr':  # Cannot use for LiveTV stream
-                        if xbmcvfs.exists(xxx):
-                            try:
-                                infos = mediax().getInfos(xxx)
-                            except:
-                                infos = [0, 0, 1, 0]
-
-                # InfoLabel Method
-                if (infos[0] == 0) or (infos[1] == 0):
-                    vp_res = xbmc.getInfoLabel("VideoPlayer.VideoResolution")
-                    if str(vp_res).lower() == '4k':
-                        vp_res_int = 2160
-                    else:
-                        try:
-                            vp_res_int = int(vp_res)
-                        except ValueError or TypeError:
-                            vp_res_int = 0
-                    if vp_res_int != 0 and infos[3] != 0:
-                        if infos[3] > 1.7778:
-                            infos[0] = int(vp_res_int * 1.7778)
-                            infos[1] = int(infos[0] / infos[3])
-                        else:
-                            infos[0] = int(infos[3] * vp_res_int)
-                            infos[1] = vp_res_int
-                # Fallback
-                if (infos[0] == 0) or (infos[1] == 0):
-                    infos[0] = screenx
-                    infos[1] = screeny
-
-                # Set quality
-                quality = scriptsettings.settings['directXBMC_quality']
-                minq = 32
-                maxq = infos[1]
-                if quality == 0:
-                    infos[1] = minq
-                    infos[0] = int(infos[1] * infos[3])
-                elif quality == 1:
-                    infos[1] = int(minq + ((maxq - minq) / 3))
-                    infos[0] = int(infos[1] * infos[3])
-                elif quality == 2:
-                    infos[1] = int(minq + (2 * (maxq - minq) / 3))
-                    infos[0] = int(infos[1] * infos[3])
-                else:
-                    if infos[3] > sar:
-                        if infos[1] == 0:
-                            infos[1] = screeny
-                        infos[0] = int(infos[1] * infos[3])
-                    else:
-                        if infos[0] == 0:
-                            infos[0] = screenx
-                        infos[1] = int(infos[0] / infos[3])
-
-                # Get other settings associated with XBMC Direct
+                infos, quality = self.get_dimensions_for_XBMCD(infos)
+              # Get other settings associated with XBMC Direct
 
                 use_threading = scriptsettings.settings['use_threading']
                 throttle = scriptsettings.settings['throttle']
@@ -1083,7 +834,7 @@ class XbmcMonitor(xbmc.Monitor):
         scriptsettings.refresh_settings()
         if scriptsettings.settings['start_ambibox'] is True and ambibox.is_running is False:
             ambibox.start_ambiboxw()
-        chkMediaInfo()
+        chk_mediainfo()
         if scriptsettings.settings['key_use']:
             kbs.process_keyboard_settings()
 
@@ -1157,6 +908,7 @@ class XBMCD(object):
         info('Initial video framerate reported as %s' % str(self.sfps))
         self.tpf = int(1000.0 / self.sfps)
         self.sleeptime = int(0.1 * self.tpf)
+        self.frame_count = 0
         self.frame_freq_to_chk_file_changed = int(self.sfps * 5.0)
         try:
             self.inDataMap = mmap.mmap(0, self.length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
@@ -1172,13 +924,15 @@ class XBMCD(object):
                 info('Error creating connection to Ambibox Windows, no further information available')
                 return
 
-    def exit_event(self, counter):
+    def exit_event(self):
         if self.runtype == self.TYPE_STANDARD:
-            if divmod(counter, self.frame_freq_to_chk_file_changed)[1] == 0:
+            if self.frame_count > self.frame_freq_to_chk_file_changed:
                 current_file = self.player.getPlayingFile()
                 if self.playing_file != current_file:
                     info('XBMCD restarting due to file change')
                     self.run()
+                self.frame_count = 0
+            self.frame_count += 1
             return not (self.player.isPlaying())
         elif self.runtype == self.TYPE_THREADED:
             return self.killswitch
@@ -1194,17 +948,18 @@ class XBMCD(object):
             self.run_ni()
 
     def run_ni(self):
-        missed_capture_count = 0
-        counter = 0
+        missed_capture_count = -1  # always misses the first frame
+        first_pass = True
+        self.frame_count = 0
         self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
-        while self.exit_event(counter) is False:
+        while self.exit_event() is False:
             self.capture.waitForCaptureStateChangeEvent(self.tpf)
             cgcs = self.capture.getCaptureState()
             if cgcs == xbmc.CAPTURE_STATE_DONE:
-                self.copy_image_to_mmap(counter)
-                counter += 1
+                self.copy_image_to_mmap(first_pass)
+                first_pass = False
                 xbmc.sleep(self.sleeptime)
                 if simul:
                     self.inDataMap[0] = chr(248)
@@ -1212,7 +967,7 @@ class XBMCD(object):
                 missed_capture_count += 1
                 continue
             elif cgcs == xbmc.CAPTURE_STATE_FAILED:
-                info('XBMCDirect Capture stopped after %s frames' % counter)
+                info('XBMCDirect Capture stopped')
                 if self.player.isPlaying():
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
                         notification(__language__(32035))  # @[XBMCDirect Fail]
@@ -1225,7 +980,10 @@ class XBMCD(object):
         self.inDataMap = None
 
     def run_i(self):
-        missed_capture_count = 0
+        missed_frames = []
+        missed_capture_count = -1
+        first_pass = True
+        self.frame_count = 0
         counter = 0
         sumtime = 0
         ctime = 0
@@ -1234,35 +992,39 @@ class XBMCD(object):
         self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
-        while self.exit_event(counter) is False:
+        while self.exit_event() is False:
             with Timer() as t:
                 self.capture.waitForCaptureStateChangeEvent(self.tpf)
                 cgcs = self.capture.getCaptureState()
                 if cgcs == xbmc.CAPTURE_STATE_DONE:
                     with Timer() as t2:
-                        self.copy_image_to_mmap(counter)
+                        self.copy_image_to_mmap(first_pass)
+                        first_pass = False
                         counter += 1
                     ctime += t2.microsecs
                     xbmc.sleep(self.sleeptime)
                 elif cgcs == xbmc.CAPTURE_STATE_WORKING:
                     missed_capture_count += 1
+                    if counter != 0:
+                        missed_frames.append(counter)
                     continue
                 elif cgcs == xbmc.CAPTURE_STATE_FAILED:
                     info('XBMCDirect Capture stopped after %s frames' % counter)
+                    xbmc.sleep(250)
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
                         notification(__language__(32035))  # @[XBMCDirect Fail]
                     break
             sumtime += t.msecs
             if counter == 50:
-                self.sfps = float(xbmc.getInfoLabel('System.FPS'))  # wait for 50 frames before getting fps
+                self.sfps = float(xbmc.getInfoLabel('System.FPS'))  # wait for 50 frames before updating fps
                 self.tpf = int(1000.0 / self.sfps)
                 evalframenum = int(self.sfps * 10.0)  # evaluate how much to sleep over first 10s of video
             if counter == evalframenum:
-                dfps = 1 + (self.sfps - (1 / tfactor)) * tfactor  # calculates a desired fps based on throttle val
-                sleeptime = int(0.95 * ((1000.0 / dfps) - (ctime / (1000.0 * counter))))  # 95% of calc sleep
+                dfps = self.sfps * tfactor  # calculates a desired fps based on throttle val
+                self.sleeptime = int(0.95 * ((1000.0 / dfps) - (ctime / (1000.0 * counter))))  # 95% of calc sleep
                 info('Over first %s frames, avg process time for render = %s microsecs'
                      % (counter, int(float(ctime) / float(counter))))
-                if sleeptime < 10:
+                if self.sleeptime < 10:
                     info('Capture framerate limited by limited system speed')
                     self.sleeptime = 10
                 sumtime = 0
@@ -1284,16 +1046,16 @@ class XBMCD(object):
                      % (self.sleeptime, pcnt_sleep))
                 if missed_capture_count > 0:
                     info('XBMCDirect reports missing %s captures due to RenderCapture timeouts' % missed_capture_count)
+                    info('The following frame number(s) were missed: %s' % str(missed_frames))
         self.inDataMap.close()
         self.inDataMap = None
 
-    def copy_image_to_mmap(self, counter):
+    def copy_image_to_mmap(self, first_pass):
         image = self.capture.getImage()
         self.inDataMap.seek(0)
         seeked = self.inDataMap.read_byte()
         if ord(seeked) == 248:
-            if counter == 0:
-                length = len(image)
+            if first_pass:
                 info('XBMCDirect Capture successful')
                 notification(__language__(32034))
                 # width
@@ -1313,28 +1075,24 @@ class XBMCD(object):
                 else:
                     self.inDataMap[6] = (chr(2))
                 # datasize
-                self.inDataMap[7] = (chr(length & 0xff))
-                self.inDataMap[8] = (chr((length >> 8) & 0xff))
-                self.inDataMap[9] = (chr((length >> 16) & 0xff))
-                self.inDataMap[10] = (chr((length >> 24) & 0xff))
-            self.inDataMap[11:(11 + self.length)] = str(image)
+                self.inDataMap[7] = (chr(self.length & 0xff))
+                self.inDataMap[8] = (chr((self.length >> 8) & 0xff))
+                self.inDataMap[9] = (chr((self.length >> 16) & 0xff))
+                self.inDataMap[10] = (chr((self.length >> 24) & 0xff))
+            #self.inDataMap[11:(11 + self.length)] = str(image)
+            self.ctype_copy_to_mmap(self.inDataMap, image)
             # write first byte to indicate we finished writing the data
             self.inDataMap[0] = (chr(240))
 
+    def copy_to_mmap(self, inDataMap, image):
+        inDataMap[11:(11 + self.length)] = str(image)
 
-class Timer(object):
-    def __init__(self):
-        super(Timer, self).__init__()
-
-    def __enter__(self):
-        self.start = time.time()
-        return self
-
-    def __exit__(self, *args):
-        self.end = time.time()
-        self.secs = self.end - self.start
-        self.microsecs = self.secs * 1000000.0
-        self.msecs = self.secs * 1000.0
+    def ctype_copy_to_mmap(self, inDataMap, image):
+        T = (ctypes.c_uint8 * (self.length + 11))
+        U = (ctypes.c_uint8 * self.length)
+        dest = T.from_buffer(inDataMap)
+        src = U.from_buffer(image)
+        ctypes.memmove(ctypes.addressof(dest)+11, ctypes.addressof(src), self.length)
 
 
 def simulate():
@@ -1345,7 +1103,7 @@ def simulate():
 
     __language__ = language
     infos = [1920, 1080, 1, 2.4, 23.97]
-    xd = XBMCDt(infos)
+    xd = XBMCDt(infos, True)
     xd.start()
     time.sleep(10)
     xd.stop()
@@ -1366,7 +1124,7 @@ def startup():
         xbmc_version = float(str(xbmc.getInfoLabel("System.BuildVersion"))[0:4])
     except ValueError:
         xbmc_version = 13.1
-    chkMediaInfo()
+    chk_mediainfo()
     ambibox = XbmcAmbibox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
     if __settings__.getSetting('start_ambibox') == 'true':
         ambibox.start_ambiboxw()
@@ -1394,11 +1152,12 @@ def main():
         else:
             # This is to get around a bug where onPlayBackStarted is not fired for external players present
             # in releases up to Gotham 13.1
-            if chk is True and count > 8:
-                if player.isPlayingVideo() and not player.onPBSfired:
-                    info('Firing missed onPlayBackStarted event')
-                    player.onPlayBackStarted()
-                    count = 0
+            if count > 8:
+                if chk is True:
+                    if player.isPlayingVideo() and not player.onPBSfired:
+                        info('Firing missed onPlayBackStarted event')
+                        player.onPlayBackStarted()
+                count = 0
             count += 1
             xbmc.sleep(250)
     if player is not None:

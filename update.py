@@ -17,9 +17,11 @@
 #Modules General
 import os
 from xml.etree import ElementTree
+
 import xbmc
 import xbmcaddon
 from resources.lib.ambibox import AmbiBox
+
 
 __addon__ = xbmcaddon.Addon("script.ambibox")
 __cwd__ = __addon__.getAddonInfo('path')
