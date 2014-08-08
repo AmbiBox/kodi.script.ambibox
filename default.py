@@ -42,6 +42,9 @@ from resources.lib.ambibox import AmbiBox
 from resources.lib.abxtimer import Timer
 from resources.lib.xbmcoutput import notification, debug, info
 from resources.lib.keyboardxml import KeyboardXml
+from resources.lib.mediainfofromlog import get_log_mediainfo
+AR_16x9 = 16.0/9.0
+AR_4x3 = 4.0/3.0
 
 __language__ = None
 
@@ -330,7 +333,7 @@ class ScriptSettings(object):
     def __init__(self):
         self.settings = dict()
         self.aspect_ratio_codes = ['43', '32', '169', '185', '22', '24']
-        self.ar_dict = {'43': 1.333, '32': 1.5, '69': 1.778, '85': 1.85, '22': 2.2, '24': 2.4}
+        self.ar_dict = {'43': AR_4x3, '32': 1.5, '69': AR_16x9, '85': 1.85, '22': 2.2, '24': 2.4}
         self.stereo_modes = ['2D', '3DS', '3DT']
         self.aspect_ratio_settings = []
         self.profiles = Profiles()
@@ -513,6 +516,7 @@ class CapturePlayer(xbmc.Player):
         self.reTAB = re.compile("[-. _]h?tab[-. _]", re.IGNORECASE)
         self.reSBS = re.compile("[-. _]h?sbs[-. _]", re.IGNORECASE)
         self.onPBSfired = False
+        self.mi_called = False
         self.xd = None
         self.playing_file = ''
         super(CapturePlayer, self).__init__(*args)
@@ -545,18 +549,32 @@ class CapturePlayer(xbmc.Player):
             self.onPlayBackStarted()
 
     def get_aspect_ratio(self):
-        try:
-            self.playing_file = self.getPlayingFile()
-        except:
-            info('Error retrieving video file from xbmc.player')
-            return
+
         infos = [0, 0, 1, 0, 0]
         self.mi_called = False
         # Get aspect ratio
         # First try MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
+        infox = get_log_mediainfo()
+        if infox is not None:
+            if infox['dwidth'] != 0:
+                infos[0] = infox['dwidth']
+            if infox['dheight'] != 0:
+                infos[1] = infox['dheight']
+            if infox['dar'] != 0:
+                infos[3] = infox['dar']
+            if infox['fps'] != 0:
+                infos[4] = infox['fps']
+            if infos[0] != 0 and infos[1] != 0:
+                info('Aspect ratio determined from log')
+                info('Log Mediainfo- %s' % str(infox))
+                return infos
 
         #MediaInfo Method
-        if mediax is not None:
+        try:
+            self.playing_file = self.getPlayingFile()
+        except:
+            info('Error retrieving video file from xbmc.player')
+        if infos[0] != 0 and infos[1] != 0 and (mediax is not None):
             if self.playing_file[0:3] != 'pvr':  # Cannot use for LiveTV stream
                 if xbmcvfs.exists(self.playing_file):
                     try:
@@ -567,6 +585,7 @@ class CapturePlayer(xbmc.Player):
                     else:
                         if infos[3] != 0:
                             info('Aspect ratio determined by mediainfo.dll = % s' % infos[3])
+                            return infos
                         else:
                             info('mediainfo.dll returned AR = 0')
                 else:
@@ -584,7 +603,12 @@ class CapturePlayer(xbmc.Player):
             except TypeError:
                 infos[3] = float(0)
             else:
-                info('Aspect ratio determined by InfoLabel = %s' % vp_ar)
+                if infos[3] == 1.78:
+                    infos[3] = AR_16x9
+                elif infos[3] == 1.33:
+                    infos[3] = AR_4x3
+                info('Aspect ratio determined by InfoLabel = %s' % infos[3])
+                return infos
 
         # Capture Method
         if infos[3] == 0:
@@ -594,7 +618,7 @@ class CapturePlayer(xbmc.Player):
                 info('Aspect ratio determined by XBMC.Capture = %s' % infos[3])
             else:
                 # Fallback Method
-                infos[3] = float(screenx) / float(screeny)
+                infos[3] = sar
                 info('Aspect ratio not able to be determined - using screen AR = %s' % infos[3])
         return infos
 
@@ -651,8 +675,8 @@ class CapturePlayer(xbmc.Player):
                 except ValueError or TypeError:
                     vp_res_int = 0
             if vp_res_int != 0 and infos[3] != 0:
-                if infos[3] > 1.7778:
-                    infos[0] = int(vp_res_int * 1.7778)
+                if infos[3] > AR_16x9:
+                    infos[0] = int(vp_res_int * AR_16x9)
                     infos[1] = int(infos[0] / infos[3])
                 else:
                     infos[0] = int(infos[3] * vp_res_int)
@@ -664,7 +688,7 @@ class CapturePlayer(xbmc.Player):
 
         # Set quality
         quality = scriptsettings.settings['directXBMC_quality']
-        minq = 32
+        minq = 64
         maxq = infos[1]
         if quality == 0:
             infos[1] = minq
@@ -981,14 +1005,14 @@ class XBMCD(object):
 
     def run_i(self):
         missed_frames = []
-        missed_capture_count = -1
+        missed_capture_count = 0
         first_pass = True
         self.frame_count = 0
         counter = 0
         sumtime = 0
         ctime = 0
         tfactor = self.throttle / 100.0
-        evalframenum = -1
+        evalframenum = int(self.sfps * 10.0)  # After 10 sec of video
         self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
@@ -1004,9 +1028,9 @@ class XBMCD(object):
                     ctime += t2.microsecs
                     xbmc.sleep(self.sleeptime)
                 elif cgcs == xbmc.CAPTURE_STATE_WORKING:
-                    missed_capture_count += 1
                     if counter != 0:
-                        missed_frames.append(counter)
+                        missed_capture_count += 1
+                        missed_frames.append(str(counter))
                     continue
                 elif cgcs == xbmc.CAPTURE_STATE_FAILED:
                     info('XBMCDirect Capture stopped after %s frames' % counter)
@@ -1015,10 +1039,6 @@ class XBMCD(object):
                         notification(__language__(32035))  # @[XBMCDirect Fail]
                     break
             sumtime += t.msecs
-            if counter == 50:
-                self.sfps = float(xbmc.getInfoLabel('System.FPS'))  # wait for 50 frames before updating fps
-                self.tpf = int(1000.0 / self.sfps)
-                evalframenum = int(self.sfps * 10.0)  # evaluate how much to sleep over first 10s of video
             if counter == evalframenum:
                 dfps = self.sfps * tfactor  # calculates a desired fps based on throttle val
                 self.sleeptime = int(0.95 * ((1000.0 / dfps) - (ctime / (1000.0 * counter))))  # 95% of calc sleep
@@ -1046,7 +1066,8 @@ class XBMCD(object):
                      % (self.sleeptime, pcnt_sleep))
                 if missed_capture_count > 0:
                     info('XBMCDirect reports missing %s captures due to RenderCapture timeouts' % missed_capture_count)
-                    info('The following frame number(s) were missed: %s' % str(missed_frames))
+                    if len(missed_frames) > 0:
+                        info('The following frame number(s) were missed: %s' % str(missed_frames))
         self.inDataMap.close()
         self.inDataMap = None
 
@@ -1119,7 +1140,7 @@ def startup():
     if screeny != 0:
         sar = float(screenx) / float(screeny)
     else:
-        sar = 16.0 / 9.0
+        sar = AR_16x9
     try:
         xbmc_version = float(str(xbmc.getInfoLabel("System.BuildVersion"))[0:4])
     except ValueError:
