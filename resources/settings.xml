@@ -24,6 +24,7 @@
     <setting default="false" id="use_threading" label="32078" type="bool" />
     <setting default="true" id="instrumented" label="32079" type="bool" />
     <setting default="100" enable="eq(-1,true)" id="throttle" label="32068" option="int" range="1,100" type="slider" />
+    <setting default="false" id="use_ctypes" label="Use Ctypes?" type="bool" />
  </category>
 
  <category label="32053">

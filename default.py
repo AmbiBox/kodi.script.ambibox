@@ -347,7 +347,7 @@ class ScriptSettings(object):
                           'video_profile', 'key_on_str', 'key_off_str']
         settinglistint = ['video_choice', 'directXBMC_quality']
         settinglistbool = ['notification', 'start_ambibox', 'default_enable', 'audio_enable', 'disable_on_screensaver',
-                           'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use', 'key_on_shift',
+                           'show_menu', 'use_threading', 'instrumented', 'use_ctypes', '3D_enable', 'key_use', 'key_on_shift',
                            'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt']
         settinglistfloat = ['throttle']
 
@@ -1101,19 +1101,22 @@ class XBMCD(object):
                 self.inDataMap[9] = (chr((self.length >> 16) & 0xff))
                 self.inDataMap[10] = (chr((self.length >> 24) & 0xff))
             #self.inDataMap[11:(11 + self.length)] = str(image)
-            self.ctype_copy_to_mmap(self.inDataMap, image)
+            self.copy_to_mmap(self.inDataMap, image)
             # write first byte to indicate we finished writing the data
             self.inDataMap[0] = (chr(240))
 
     def copy_to_mmap(self, inDataMap, image):
-        inDataMap[11:(11 + self.length)] = str(image)
+        if scriptsettings.settings['use_ctypes'] is True:
+            self.ctype_copy_to_mmap(inDataMap, image)
+        else:
+            inDataMap[11:(11 + self.length)] = str(image)
 
     def ctype_copy_to_mmap(self, inDataMap, image):
         T = (ctypes.c_uint8 * (self.length + 11))
         U = (ctypes.c_uint8 * self.length)
         dest = T.from_buffer(inDataMap)
         src = U.from_buffer(image)
-        ctypes.memmove(ctypes.addressof(dest)+11, ctypes.addressof(src), self.length)
+        ctypes.memmove(ctypes.addressof(dest) + 11, ctypes.addressof(src), self.length)
 
 
 def simulate():
