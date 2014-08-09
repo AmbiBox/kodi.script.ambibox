@@ -1,3 +1,7 @@
+1.0.5.0
+Reads dimensions, aspect ratio and framerate from log
+Uses ctypes to speed up pushing image to mmap
+
 1.0.4.8
 Rewrote classes to make more readable and cleaned up code
 Fixed bugs
