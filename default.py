@@ -45,6 +45,7 @@ from resources.lib.keyboardxml import KeyboardXml
 from resources.lib.mediainfofromlog import get_log_mediainfo
 AR_16x9 = 16.0/9.0
 AR_4x3 = 4.0/3.0
+MIN_CAPTURE_Y = 64
 
 __language__ = None
 
@@ -63,6 +64,7 @@ if not simul:
     sar = 0.0
     ambibox = None
     scriptsettings = None
+    gplayer = None
     kbs = None
     Arprofile_info = namedtuple('Arprofile_info', 'profile_name, aspectratio, lower_lmt, upper_lmt')
     xbmc_version = 0
@@ -565,8 +567,8 @@ class CapturePlayer(xbmc.Player):
             if infox['fps'] != 0:
                 infos[4] = infox['fps']
             if infos[0] != 0 and infos[1] != 0:
-                info('Aspect ratio determined from log')
-                info('Log Mediainfo- %s' % str(infox))
+                info('Aspect ratio determined from log: %s' % infos[3])
+                debug('Log Mediainfo- %s' % str(infox))
                 return infos
 
         #MediaInfo Method
@@ -688,7 +690,7 @@ class CapturePlayer(xbmc.Player):
 
         # Set quality
         quality = scriptsettings.settings['directXBMC_quality']
-        minq = 64
+        minq = MIN_CAPTURE_Y
         maxq = infos[1]
         if quality == 0:
             infos[1] = minq
@@ -711,6 +713,9 @@ class CapturePlayer(xbmc.Player):
         return infos, quality
 
     def onPlayBackStarted(self):
+        if self.xd is not None:
+            del self.xd
+            self.xd = None
         self.onPBSfired = True
         if ambibox.connect() != 0:
             return
@@ -760,7 +765,7 @@ class CapturePlayer(xbmc.Player):
 
                 info('XBMCDirect throttle =  %s, qual = %s, captureX = %s, captureY = %s, thread = %s, instr = %s'
                      % (throttle, quality, infos[0], infos[1], use_threading, instrumented))
-
+                info('Using Ctypes: %s' % str(scriptsettings.settings['use_ctypes']))
                 #Start XBMC Direct
                 self.run_XBMCD(infos, use_threading, instrumented, throttle)
 
@@ -779,7 +784,8 @@ class CapturePlayer(xbmc.Player):
     def kill_XBMCDirect(self):
         try:
             if self.xd is not None:
-                self.xd.stop()
+                if self.xd.is_alive:
+                    self.xd.stop()
             if self.xd is not None:
                 if self.xd.is_alive() and isinstance(self.xd, XBMCDt):
                     self.xd.join(0.5)
@@ -896,9 +902,9 @@ class XBMCDnormal(object):
         self.worker.run()
 
     def stop(self):
-        self.worker.stop()
-        del self.worker
-        del self
+        if self.worker is not None:
+            self.worker.stop()
+            del self.worker
 
     def is_alive(self):
         return self.worker is not None
@@ -914,8 +920,6 @@ class XBMCD(object):
         self.runtype = runtype
         self.throttle = throttle
         self.instrumented = instrumented
-        if runtype == self.TYPE_STANDARD:
-            self.player = xbmc.Player()
         self.killswitch = False
         self.playing_file = ''
         self.capture = xbmc.RenderCapture()
@@ -934,6 +938,10 @@ class XBMCD(object):
         self.sleeptime = int(0.1 * self.tpf)
         self.frame_count = 0
         self.frame_freq_to_chk_file_changed = int(self.sfps * 5.0)
+        if scriptsettings.settings['use_ctypes'] is True:
+            self.copy_to_mmap = self.ctype_copy_to_mmap
+        else:
+            self.copy_to_mmap = self.reg_copy_to_mmap
         try:
             self.inDataMap = mmap.mmap(0, self.length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
             if simul:
@@ -947,19 +955,27 @@ class XBMCD(object):
             if self.inDataMap is None:
                 info('Error creating connection to Ambibox Windows, no further information available')
                 return
+        if runtype == self.TYPE_STANDARD:
+            self.exit_event = self.exit_event_nonthreaded
+            self.player = gplayer
+        elif runtype == self.TYPE_THREADED:
+            self.exit_event = self.exit_event_threaded
 
-    def exit_event(self):
-        if self.runtype == self.TYPE_STANDARD:
-            if self.frame_count > self.frame_freq_to_chk_file_changed:
-                current_file = self.player.getPlayingFile()
-                if self.playing_file != current_file:
-                    info('XBMCD restarting due to file change')
-                    self.run()
-                self.frame_count = 0
-            self.frame_count += 1
-            return not (self.player.isPlaying())
-        elif self.runtype == self.TYPE_THREADED:
-            return self.killswitch
+    def exit_event_nonthreaded(self):
+        if self.frame_count > self.frame_freq_to_chk_file_changed:
+            current_file = self.player.getPlayingFile()
+            if self.playing_file != current_file:
+                info('XBMCD restarting due to file change')
+                del self.capture
+                del self.inDataMap
+                gplayer.onPlayBackStarted()
+                return
+            self.frame_count = -1
+        self.frame_count += 1
+        return not (self.player.isPlaying())
+
+    def exit_event_threaded(self):
+        return self.killswitch
 
     def stop(self):
         if self.runtype == self.TYPE_THREADED:
@@ -1101,20 +1117,17 @@ class XBMCD(object):
                 self.inDataMap[9] = (chr((self.length >> 16) & 0xff))
                 self.inDataMap[10] = (chr((self.length >> 24) & 0xff))
             #self.inDataMap[11:(11 + self.length)] = str(image)
-            self.copy_to_mmap(self.inDataMap, image)
+            self.copy_to_mmap(image)
             # write first byte to indicate we finished writing the data
             self.inDataMap[0] = (chr(240))
 
-    def copy_to_mmap(self, inDataMap, image):
-        if scriptsettings.settings['use_ctypes'] is True:
-            self.ctype_copy_to_mmap(inDataMap, image)
-        else:
-            inDataMap[11:(11 + self.length)] = str(image)
+    def reg_copy_to_mmap(self, image):
+            self.inDataMap[11:(11 + self.length)] = str(image)
 
-    def ctype_copy_to_mmap(self, inDataMap, image):
+    def ctype_copy_to_mmap(self, image):
         T = (ctypes.c_uint8 * (self.length + 11))
         U = (ctypes.c_uint8 * self.length)
-        dest = T.from_buffer(inDataMap)
+        dest = T.from_buffer(self.inDataMap)
         src = U.from_buffer(image)
         ctypes.memmove(ctypes.addressof(dest) + 11, ctypes.addressof(src), self.length)
 
@@ -1159,35 +1172,35 @@ def startup():
 
 
 def main():
-    global ambibox, scriptsettings
+    global ambibox, scriptsettings, gplayer
     info('Service Started - ver %s' % __version__)
     startup()
-    player = None
+    gplayer = None
     monitor = XbmcMonitor()
     chk = 13.0 <= xbmc_version < 13.11
     count = 0
     while not xbmc.abortRequested:
-        if player is None:
+        if gplayer is None:
             if ambibox.connect() == 0:
                 notification(__language__(32030))  # @[Connected to AmbiBox]
                 ambibox.switch_to_default_profile()
-                player = CapturePlayer()
+                gplayer = CapturePlayer()
             xbmc.sleep(1000)
         else:
             # This is to get around a bug where onPlayBackStarted is not fired for external players present
             # in releases up to Gotham 13.1
             if count > 8:
                 if chk is True:
-                    if player.isPlayingVideo() and not player.onPBSfired:
+                    if gplayer.isPlayingVideo() and not gplayer.onPBSfired:
                         info('Firing missed onPlayBackStarted event')
-                        player.onPlayBackStarted()
+                        gplayer.onPlayBackStarted()
                 count = 0
             count += 1
             xbmc.sleep(250)
-    if player is not None:
-        player.kill_XBMCDirect()
-        player.close()
-        del player
+    if gplayer is not None:
+        gplayer.kill_XBMCDirect()
+        gplayer.close()
+        del gplayer
         if ambibox is not None:
             ambibox.close()
             del ambibox
