@@ -1233,16 +1233,11 @@ def simulate():
 
 
 def test():
-    dialog = xbmcgui.Dialog()
-    answer = dialog.yesno('Ambibox', 'Run Tests?')
-    del dialog
-    if answer != 1:
-        return
     global refresh_settings
     refresh_settings = False
     xbmc.sleep(1000)
     testpath = os.path.join(__cwd__, 'resources', 'media')
-    url = os.path.join(testpath, r"F:\Video\Test_1080_23.97.mp4")
+    url = os.path.join(testpath, 'Test_1080_23.97.mp4' )
     throttle_tests = [50.0, 25.0, 12.5]
     qual_tests = [3, 2, 1, 0]
     save_throttle = scriptsettings.settings['throttle']
@@ -1254,10 +1249,10 @@ def test():
     scriptsettings.settings['video_choice'] = 1
     scriptsettings.settings['instrumented'] = True
     mp = xbmc.Player()
-    count = 1
     t = 100.0
     best_qual = -1
     for q in qual_tests:
+        info('Starting test: qual = %s, throttle = %s  ################' % (q, t))
         dialog = xbmcgui.Dialog()
         notice = 'Testing qual = %s, throttle = %s' % (q, t)
         dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 5000)
@@ -1273,10 +1268,11 @@ def test():
                 best_qual = q
                 break
         xbmc.sleep(3000)
-        count += 1
     best_throttle = -1
     if best_qual == -1:
+        q = 0
         for t in throttle_tests:
+            info('Starting test: qual = %s, throttle = %s  ################' % (q, t))
             dialog = xbmcgui.Dialog()
             notice = 'Testing qual = %s, throttle = %s' % (q, t)
             dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 5000)
@@ -1287,13 +1283,16 @@ def test():
             while mp.isPlaying():
                 xbmc.sleep(250)
             result = xbmcd_results.get_last_result()
+            dfps = result.fps_orig * t / 100.0
             if (result.missedframes < (0.1 * result.numframes)) and (result.sleeptime < (0.5 * 1000.0 / result.fps_orig)):
-                best_throttle = t
-                break
+                if result.fps_xd > (0.9 * dfps):
+                    best_throttle = t
+                    break
             xbmc.sleep(3000)
     else:
         best_throttle = 100.0
     if best_qual == -1:
+        notification('Optimization failed - see XBMC.log')
         info('Optimization failed to discover optimum results for quality and throttle')
         scriptsettings.settings['throttle'] = save_throttle
         scriptsettings.settings['directXBMC_quality'] = save_qual
@@ -1303,10 +1302,19 @@ def test():
     else:
         __settings = xbmcaddon.Addon('script.ambibox')
         info('Optimization test shows best qual =  %s, best throttle = %s' % (best_qual, best_throttle))
-        scriptsettings.settings['throttle'] = best_throttle
-        __settings.setSetting('throttle', str(best_throttle))
-        scriptsettings.settings['directXBMC_quality'] = best_qual
-        __settings.setSetting('directXBMC_quality', str(best_qual))
+        dialog = xbmcgui.Dialog()
+        answer = dialog.yesno('Ambibox - XBMC', 'Optimization test shows best qual =  %s, best throttle = %s'
+                              % (best_qual, best_throttle), 'Use these settings?')
+        if answer == 1:
+            info('Settings for throttle and qual set to optimized settings')
+            scriptsettings.settings['throttle'] = best_throttle
+            __settings.setSetting('throttle', str(best_throttle))
+            scriptsettings.settings['directXBMC_quality'] = best_qual
+            __settings.setSetting('directXBMC_quality', str(best_qual))
+        else:
+            info('Optimized settings discarded')
+            scriptsettings.settings['throttle'] = save_throttle
+            scriptsettings.settings['directXBMC_quality'] = save_qual
         scriptsettings.settings['use_threading'] = save_threading
         scriptsettings.settings['video_choice'] = save_pfl_method
         scriptsettings.settings['instrumented'] = save_instr
@@ -1377,7 +1385,7 @@ def main():
 
 
 if __name__ == '__main__':
-    #start_debugger()
+    # start_debugger()
     if not simul:
         main()
         info('Ambibox exiting')
