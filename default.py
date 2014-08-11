@@ -1235,7 +1235,12 @@ def simulate():
 def test():
     global refresh_settings
     refresh_settings = False
-    xbmc.sleep(1000)
+    xbmc.executebuiltin('Dialog.Close(all,true)')
+    xbmc.sleep(250)
+    for i in xrange(0,4):
+        xbmc.executebuiltin('Action(back)')
+        xbmc.sleep(250)
+    xbmc.sleep(750)
     testpath = os.path.join(__cwd__, 'resources', 'media')
     url = os.path.join(testpath, 'Test_1080_23.97.mp4' )
     throttle_tests = [50.0, 25.0, 12.5]
@@ -1255,7 +1260,7 @@ def test():
         info('Starting test: qual = %s, throttle = %s  ################' % (q, t))
         dialog = xbmcgui.Dialog()
         notice = 'Testing qual = %s, throttle = %s' % (q, t)
-        dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 5000)
+        dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 2000)
         del dialog
         scriptsettings.settings['throttle'] = t
         scriptsettings.settings['directXBMC_quality'] = q
@@ -1275,7 +1280,7 @@ def test():
             info('Starting test: qual = %s, throttle = %s  ################' % (q, t))
             dialog = xbmcgui.Dialog()
             notice = 'Testing qual = %s, throttle = %s' % (q, t)
-            dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 5000)
+            dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 2000)
             del dialog
             scriptsettings.settings['throttle'] = t
             scriptsettings.settings['directXBMC_quality'] = q
@@ -1304,7 +1309,7 @@ def test():
         info('Optimization test shows best qual =  %s, best throttle = %s' % (best_qual, best_throttle))
         dialog = xbmcgui.Dialog()
         answer = dialog.yesno('Ambibox - XBMC', 'Optimization test shows best qual =  %s, best throttle = %s'
-                              % (best_qual, best_throttle), 'Use these settings?')
+                              % (best_qual, best_throttle), 'Use these settings?', autoclose=30000)
         if answer == 1:
             info('Settings for throttle and qual set to optimized settings')
             scriptsettings.settings['throttle'] = best_throttle
