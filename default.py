@@ -65,6 +65,7 @@ if not simul:
     ambibox = None
     scriptsettings = None
     gplayer = None
+    xbmcd_results = None
     kbs = None
     Arprofile_info = namedtuple('Arprofile_info', 'profile_name, aspectratio, lower_lmt, upper_lmt')
     xbmc_version = 0
@@ -159,7 +160,7 @@ class XbmcAmbibox(AmbiBox):
     def get_profiles(self):
         if len(self.profiles) == 0:
             self.retrieve_profiles()
-        return self.profiles
+        return list(self.profiles)
 
     def retrieve_profiles(self):
         if self.connect() == 0:
@@ -755,19 +756,29 @@ class CapturePlayer(xbmc.Player):
 
             profile_is_XBMCDirect = scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile)
             if profile_is_XBMCDirect is True:
-
+                result = XBMCDresult()
+                result.fn = self.getPlayingFile()
+                result.height_orig = infos[0]
+                result.width_orig = infos[1]
+                result.fps_orig = infos[4]
                 infos, quality = self.get_dimensions_for_XBMCD(infos)
               # Get other settings associated with XBMC Direct
-
                 use_threading = scriptsettings.settings['use_threading']
                 throttle = scriptsettings.settings['throttle']
                 instrumented = scriptsettings.settings['instrumented']
+                use_ctype = scriptsettings.settings['use_ctypes']
+                result.width_capture = infos[0]
+                result.height_capture = infos[1]
+                result.threaded = use_threading
+                result.throttle = throttle
+                result.ctypes = use_ctype
+                result.qual = quality
 
                 info('XBMCDirect throttle =  %s, qual = %s, captureX = %s, captureY = %s, thread = %s, instr = %s'
                      % (throttle, quality, infos[0], infos[1], use_threading, instrumented))
-                info('Using Ctypes: %s' % str(scriptsettings.settings['use_ctypes']))
+                info('Using Ctypes: %s' % str(use_ctype))
                 #Start XBMC Direct
-                self.run_XBMCD(infos, use_threading, instrumented, throttle)
+                self.run_XBMCD(infos, result, use_threading, instrumented, throttle)
 
             elif profile_is_XBMCDirect is False:
                 info('XBMCDirect not started because profile not using XBMCDirect')
@@ -806,13 +817,13 @@ class CapturePlayer(xbmc.Player):
             ambibox.unlock()
             ambibox.disconnect()
 
-    def run_XBMCD(self, infos, use_threading, instrumented, throttle=100.0):
+    def run_XBMCD(self, infos, result, use_threading, instrumented, throttle=100.0):
         if use_threading:
             if self.xd is not None:
                 self.kill_XBMCDirect()
             info('XBMCDirect using threading')
             try:
-                p = XBMCDt(infos, instrumented=instrumented, throttle=throttle)
+                p = XBMCDt(infos, result, instrumented=instrumented, throttle=throttle)
                 p.start()
             except Exception as e:
                 info('Error starting XBMC Direct threaded')
@@ -821,8 +832,8 @@ class CapturePlayer(xbmc.Player):
                 self.xd = p
         else:
             info('XBMCDirect not using threading')
-            self.xd = XBMCDnormal(infos, instrumented=instrumented, throttle=throttle)
-            self.xd.run()
+            self.xd = XBMCDnormal(infos, result, instrumented=instrumented, throttle=throttle)
+            self.xd.start()
 
     def setprofilebydar(self, aspect_ratio, vidfmt):
         global scriptsettings, ambibox
@@ -867,21 +878,24 @@ class XbmcMonitor(xbmc.Monitor):
         chk_mediainfo()
         if scriptsettings.settings['key_use']:
             kbs.process_keyboard_settings()
+        if __settings__.getSetting('optimize') == 'true':
+            __settings__.setSetting('optimize', 'false')
+            test()
 
 
 class XBMCDt(threading.Thread):
-    # __metaclass__ = Singleton
 
-    def __init__(self, infos, instrumented=False, throttle=100.0):
+    def __init__(self, infos, result, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
         self.instrumented = instrumented
         self.throttle = throttle
+        self.result = result
         super(XBMCDt, self).__init__(name='XBMCDt')
 
     def run(self):
         info('XBMCD_threaded run event')
-        self.worker = XBMCD(self.infos, XBMCD.TYPE_THREADED, self.instrumented, self.throttle)
+        self.worker = XBMCD(self.infos, self.result, XBMCD.TYPE_THREADED, self.instrumented, self.throttle)
         self.worker.run()
 
     def stop(self):
@@ -891,30 +905,39 @@ class XBMCDt(threading.Thread):
 
 
 class XBMCDnormal(object):
-    def __init__(self, infos, instrumented=False, throttle=100.0):
+    def __init__(self, infos, result, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
         self.instrumented = instrumented
         self.throttle = throttle
+        self.result = result
 
     def run(self):
-        self.worker = XBMCD(self.infos, XBMCD.TYPE_STANDARD, self.instrumented, self.throttle)
+        self.worker = XBMCD(self.infos, self.result, XBMCD.TYPE_STANDARD, self.instrumented, self.throttle)
         self.worker.run()
 
+    def start(self):
+        self.run()
+
     def stop(self):
-        if self.worker is not None:
-            self.worker.stop()
-            del self.worker
+        if hasattr(self, 'worker'):
+            if self.worker is not None:
+                self.worker.stop()
+                del self.worker
 
     def is_alive(self):
-        return self.worker is not None
+        if hasattr(self, 'worker'):
+            return True
+        else:
+            return False
 
 
 class XBMCD(object):
     TYPE_STANDARD = 1
     TYPE_THREADED = 2
 
-    def __init__(self, infos, runtype=TYPE_STANDARD, instrumented=False, throttle=100.0):
+    def __init__(self, infos, result, runtype=TYPE_STANDARD, instrumented=False, throttle=100.0):
+        self.already_exited = False
         self.infos = infos
         self.inDataMap = None
         self.runtype = runtype
@@ -960,6 +983,8 @@ class XBMCD(object):
             self.player = gplayer
         elif runtype == self.TYPE_THREADED:
             self.exit_event = self.exit_event_threaded
+        self.mmap_address = 0
+        self.result = result
 
     def exit_event_nonthreaded(self):
         if self.frame_count > self.frame_freq_to_chk_file_changed:
@@ -969,7 +994,7 @@ class XBMCD(object):
                 del self.capture
                 del self.inDataMap
                 gplayer.onPlayBackStarted()
-                return
+                return True
             self.frame_count = -1
         self.frame_count += 1
         return not (self.player.isPlaying())
@@ -1047,6 +1072,7 @@ class XBMCD(object):
                     if counter != 0:
                         missed_capture_count += 1
                         missed_frames.append(str(counter))
+                        info('Missed frame at %s' % counter)
                     continue
                 elif cgcs == xbmc.CAPTURE_STATE_FAILED:
                     info('XBMCDirect Capture stopped after %s frames' % counter)
@@ -1063,17 +1089,26 @@ class XBMCD(object):
                 if self.sleeptime < 10:
                     info('Capture framerate limited by limited system speed')
                     self.sleeptime = 10
+                self.result.fps_sys = float(xbmc.getInfoLabel('System.FPS'))
                 sumtime = 0
                 ctime = 0
         # Exiting
         info('XBMCDirect terminating capture')
         del self.capture
-        if evalframenum != -1:
+        if evalframenum != -1 and self.already_exited is False:
+            self.already_exited = True
             if counter > evalframenum and sumtime != 0 and counter != 0:
                 counter += -evalframenum
                 ptime = int(float(ctime) / float(counter))
                 fps = float(counter) * 1000 / float(sumtime)
                 pcnt_sleep = float(self.sleeptime) * fps * 0.1
+                self.result.fps_xd = fps
+                self.result.processtime = ptime
+                self.result.sleeptime = self.sleeptime
+                self.result.numframes = counter
+                self.result.missedframes = missed_capture_count
+                global xbmcd_results
+                xbmcd_results.add_result(self.result)
                 info('XBMCdirect captured %s frames with mean of %s fps at %s %% throttle'
                      % (counter, fps, self.throttle))
                 info('XBMC System rendering speed: %s fps' % self.sfps)
@@ -1129,7 +1164,54 @@ class XBMCD(object):
         U = (ctypes.c_uint8 * self.length)
         dest = T.from_buffer(self.inDataMap)
         src = U.from_buffer(image)
-        ctypes.memmove(ctypes.addressof(dest) + 11, ctypes.addressof(src), self.length)
+        if self.mmap_address == 0:
+            self.mmap_address = ctypes.addressof(dest) + 11
+        ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.length)
+
+
+class XBMCDresult(object):
+
+    def __init__(self):
+        #initial
+        self.fn = ""
+        self.height_orig = 0
+        self.width_orig = 0
+        self.fps_orig = 0.0
+        self.threaded = False
+        self.throttle = 0
+        self.ctypes = False
+        self.qual = 0
+        self.height_capture = 0
+        self.width_capture = 0
+        # results
+        self.numframes = 0
+        self.missedframes = 0
+        self.sleeptime = 0
+        self.processtime = 0
+        self.fps_xd = 0.0
+        self.fps_sys = 0.0
+
+    def logresutls(self):
+        pass
+
+
+class XBMCresults(object):
+
+    def __init__(self):
+        self.results = []
+        self.count = 0
+
+    def add_result(self, result):
+        """
+        @param result:
+        @type result: XBMCDresult
+        @return:
+        """
+        self.results.append(result)
+        self.count += 1
+
+    def get_last_result(self):
+        return self.results[self.count - 1]
 
 
 def simulate():
@@ -1147,8 +1229,85 @@ def simulate():
     print 'Done'
 
 
+def test():
+    dialog = xbmcgui.Dialog()
+    answer = dialog.yesno('Ambibox', 'Run Tests?')
+    del dialog
+    if answer == 1:
+        xbmc.sleep(1000)
+        testpath = os.path.join(__cwd__, 'resources', 'media')
+        url = os.path.join(testpath, r"F:\Video\Test_1080_23.97.mp4")
+        throttle_tests = [50.0, 25.0, 12.5]
+        qual_tests = [3, 2, 1, 0]
+        save_throttle = scriptsettings.settings['throttle']
+        save_qual = scriptsettings.settings['directXBMC_quality']
+        save_threading = scriptsettings.settings['use_threading']
+        save_pfl_method = scriptsettings.settings['video_choice']
+        save_instr = scriptsettings.settings['instrumented']
+        scriptsettings.settings['use_threading'] = False
+        scriptsettings.settings['video_choice'] = 1
+        scriptsettings.settings['instrumented'] = True
+        mp = xbmc.Player()
+        count = 1
+        t = 100.0
+        best_qual = -1
+        for q in qual_tests:
+            dialog = xbmcgui.Dialog()
+            notice = 'Testing qual = %s, throttle = %s' % (q, t)
+            dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 5000)
+            del dialog
+            scriptsettings.settings['throttle'] = t
+            scriptsettings.settings['directXBMC_quality'] = q
+            mp.play(url)
+            while mp.isPlaying():
+                xbmc.sleep(250)
+            result = xbmcd_results.get_last_result()
+            if (result.fps_xd > (0.9 * result.fps_orig)) and (result.missedframes < (0.1 * result.numframes)):
+                if (result.processtime / 1000.0) < (0.5 * 1000.0 / result.fps_orig):
+                    best_qual = q
+                    break
+            xbmc.sleep(3000)
+            count += 1
+        best_throttle = -1
+        if best_qual == -1:
+            for t in throttle_tests:
+                dialog = xbmcgui.Dialog()
+                notice = 'Testing qual = %s, throttle = %s' % (q, t)
+                dialog.notification('Ambibox testing', notice, xbmcgui.NOTIFICATION_INFO, 5000)
+                del dialog
+                scriptsettings.settings['throttle'] = t
+                scriptsettings.settings['directXBMC_quality'] = q
+                mp.play(url)
+                while mp.isPlaying():
+                    xbmc.sleep(250)
+                result = xbmcd_results.get_last_result()
+                if (result.missedframes < (0.1 * result.numframes)) and (result.sleeptime < (0.5 * 1000.0 / result.fps_orig)):
+                    best_throttle = t
+                    break
+                xbmc.sleep(3000)
+        else:
+            best_throttle = 100.0
+        if best_qual == -1:
+            info('Optimization failed to discover optimum results for quality and throttle')
+            scriptsettings.settings['throttle'] = save_throttle
+            scriptsettings.settings['directXBMC_quality'] = save_qual
+            scriptsettings.settings['use_threading'] = save_threading
+            scriptsettings.settings['video_choice'] = save_pfl_method
+            scriptsettings.settings['instrumented'] = save_instr
+        else:
+            __settings = xbmcaddon.Addon('script.ambibox')
+            info('Optimization test shows best qual =  %s, best throttle = %s' % (best_qual, best_throttle))
+            scriptsettings.settings['throttle'] = best_throttle
+            __settings.setSetting('throttle', str(best_throttle))
+            scriptsettings.settings['directXBMC_quality'] = best_qual
+            __settings.setSetting('directXBMC_quality', str(best_qual))
+            scriptsettings.settings['use_threading'] = save_threading
+            scriptsettings.settings['video_choice'] = save_pfl_method
+            scriptsettings.settings['instrumented'] = save_instr
+
+
 def startup():
-    global ambibox, screenx, screeny, sar, scriptsettings, kbs, xbmc_version
+    global ambibox, screenx, screeny, sar, scriptsettings, kbs, xbmc_version, xbmcd_results
     user32 = ctypes.windll.user32
     screenx = user32.GetSystemMetrics(0)
     screeny = user32.GetSystemMetrics(1)
@@ -1169,6 +1328,7 @@ def startup():
     if scriptsettings.settings['key_use']:
         kbs = KeyboardXml()
         kbs.process_keyboard_settings()
+    xbmcd_results = XBMCresults()
 
 
 def main():

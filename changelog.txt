@@ -1,3 +1,7 @@
+1.0.5.1
+Fixes menu bug and termination from non-threaded bug
+Adds optimization test and results structure for XBMCDirect
+
 1.0.5.0
 Reads dimensions, aspect ratio and framerate from log
 Uses ctypes to speed up pushing image to mmap

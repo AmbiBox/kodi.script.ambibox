@@ -12,7 +12,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en\n""Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#Add-on messages id=32001 to 32080
+#Add-on messages id=32001 to 32081
 
 msgctxt "#32001"
 msgid "General"
@@ -316,4 +316,8 @@ msgstr ""
 
 msgctxt "#32080"
 msgid "Use Ctypes?"
+msgstr ""
+
+msgctxt "#32081"
+msgid "Optimize XBMCDirect settings on exit from settings?"
 msgstr ""
