@@ -13,7 +13,7 @@ msgstr ""
 "Language: ru\n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
-#Add-on messages id=#32001 to #32067
+#Add-on messages id=#32001 to #32081
 
 msgctxt "#32001"
 msgid "General"
@@ -308,17 +308,17 @@ msgid "Key to Use"
 msgstr "Ключ к Используйте"
 
 msgctxt "#32078"
-msgid "Processing type"
-msgstr "Тип обработки"
+msgid "Use threading?"
+msgstr "Используйте резьбы? "
 
 msgctxt "#32079"
-msgid "Multiprocessing"
-msgstr "Многопроцессорные"
+msgid "Measure performance?"
+msgstr "Измерьте производительность?"
 
 msgctxt "#32080"
-msgid "Multithreading"
-msgstr "Несколько потоков"
+msgid "Use Ctypes?"
+msgstr "использовать Ctypes?"
 
 msgctxt "#32081"
-msgid "No threading or multiprocessor"
-msgstr "Нет нарезания наружной или многопроцессорных"
+msgid "Optimize XBMCDirect settings on exit from settings?"
+msgstr "Оптимизируйте параметры XBMCDirect на выходе из настроек?"

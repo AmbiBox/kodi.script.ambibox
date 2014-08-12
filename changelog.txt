@@ -1,3 +1,20 @@
+1.0.5.1
+Fixes menu bug and termination from non-threaded bug
+Adds optimization test and results structure for XBMCDirect
+
+1.0.5.0
+Reads dimensions, aspect ratio and framerate from log
+Uses ctypes to speed up pushing image to mmap
+
+1.0.4.8
+Rewrote classes to make more readable and cleaned up code
+Fixed bugs
+
+1.0.4.7
+Removed multiprocessing - not working
+Add option for measuring code performance or not
+Streamlined code for threaded vs nonthreaded
+
 1.0.4
 XBMCDirect Multiprocessed instead of multithreaded
 Added performance evaluation for XBMCDirect

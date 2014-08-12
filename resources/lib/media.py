@@ -29,7 +29,7 @@ def info(msg):
     xbmc.log("### [%s] - %s" % (__scriptname__, msg,), level=xbmc.LOGNOTICE)
 
 
-class Media:
+class Media(object):
 
     def __init__(self):
         self.mi = MediaInfo()
@@ -41,6 +41,7 @@ class Media:
         height = self.mi.Get(Stream.Video, 0, "Height")
         ratio = self.mi.Get(Stream.Video, 0, "PixelAspectRatio")
         dar = self.mi.Get(Stream.Video, 0, "DisplayAspectRatio")
+        fps = self.mi.Get(Stream.Video, 0, "FrameRate")
         self.mi.Close()
         try:
             width = int(float(width))
@@ -52,8 +53,12 @@ class Media:
             dar = float(dar)
         except:
             dar = float(0)
+        try:
+            fps = float(fps)
+        except:
+            fps = float(0)
 
-        return [width, height, 1, dar]
+        return [width, height, 1, dar, fps]
 
     def smbToUNC(self, smbFile):
         testFile = smbFile[0:3]

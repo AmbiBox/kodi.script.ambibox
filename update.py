@@ -16,11 +16,12 @@
 # *
 #Modules General
 import os
-import sys
 from xml.etree import ElementTree
+
 import xbmc
 import xbmcaddon
-import ambibox
+from resources.lib.ambibox import AmbiBox
+
 
 __addon__ = xbmcaddon.Addon("script.ambibox")
 __cwd__ = __addon__.getAddonInfo('path')
@@ -28,10 +29,8 @@ __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
 __settings__ = xbmcaddon.Addon("script.ambibox")
 __language__ = __settings__.getLocalizedString
 __scriptname__ = __addon__.getAddonInfo('name')
-
-sys.path.append(__resource__)
 __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
-mambibox = ambibox.AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
+mambibox = AmbiBox(__settings__.getSetting("host"), int(__settings__.getSetting("port")))
 
 
 def info(msg):

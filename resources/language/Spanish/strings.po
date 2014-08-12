@@ -13,7 +13,7 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#Add-on messages id=32001 to 32067
+#Add-on messages id=32001 to 32081
 
 msgctxt "#32001"
 msgid "General"
@@ -308,17 +308,17 @@ msgid "Key to Use"
 msgstr "La clave para utilizar"
 
 msgctxt "#32078"
-msgid "Processing type"
-msgstr "Tipo de elaboración"
+msgid "Use threading?"
+msgstr "Utilice hilos?"
 
 msgctxt "#32079"
-msgid "Multiprocessing"
-msgstr "Multiprocesamiento"
+msgid "Measure performance?"
+msgstr "Medir el rendimiento?"
 
 msgctxt "#32080"
-msgid "Mutlithreading"
-msgstr "Hilos multi"
+msgid "Use Ctypes?"
+msgstr "Usar Ctypes?"
 
 msgctxt "#32081"
-msgid "No threading or multiprocessor"
-msgstr "No roscado o multiprocesador"
+msgid "Optimize XBMCDirect settings on exit from settings?"
+msgstr "Optimizar los ajustes XBMCDirect a la salida de la configuración?"

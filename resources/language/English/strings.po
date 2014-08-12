@@ -12,7 +12,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en\n""Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#Add-on messages id=32001 to 32077
+#Add-on messages id=32001 to 32081
 
 msgctxt "#32001"
 msgid "General"
@@ -307,17 +307,17 @@ msgid "Key to Use"
 msgstr ""
 
 msgctxt "#32078"
-msgid "Processing type"
+msgid "Use threading?"
 msgstr ""
 
 msgctxt "#32079"
-msgid "Multiprocessing"
+msgid "Measure performance?"
 msgstr ""
 
 msgctxt "#32080"
-msgid "Multithreading"
+msgid "Use Ctypes?"
 msgstr ""
 
 msgctxt "#32081"
-msgid "No threading or multiprocessor"
+msgid "Optimize XBMCDirect settings on exit from settings?"
 msgstr ""

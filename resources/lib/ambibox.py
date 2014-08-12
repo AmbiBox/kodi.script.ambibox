@@ -18,7 +18,7 @@ import socket
 import os
 
 
-class AmbiBox:
+class AmbiBox(object):
 
 #	host = '127.0.0.1'    # The remote host
 #	port = 3636           # The same port as used by the server
@@ -43,7 +43,7 @@ class AmbiBox:
             self.__readResult()
             return 0
         except:
-            print 'AmbiBox API server is missing'
+            # print 'AmbiBox API server is missing'
             return -1
 
     def disconnect(self):
