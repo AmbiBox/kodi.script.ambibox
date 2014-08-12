@@ -1421,6 +1421,8 @@ def test():
         info('Optimization failed to discover optimum results for quality and throttle')
     else:
         info('Optimization test shows best qual =  %s, best throttle = %s' % (best_qual, best_throttle))
+        xbmc.executebuiltin('Dialog.Close(all,true)')
+        xbmc.sleep(500)
         dialog = xbmcgui.Dialog()
         answer = dialog.yesno('Ambibox - XBMC', 'Optimization test shows best qual =  %s, best throttle = %s'
                               % (best_qual, best_throttle), 'Use these settings?', autoclose=30000)
