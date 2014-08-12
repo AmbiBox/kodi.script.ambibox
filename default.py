@@ -991,7 +991,10 @@ class XBMCD(object):
 
     def exit_event_nonthreaded(self):
         if self.frame_count > self.frame_freq_to_chk_file_changed:
-            current_file = self.player.getPlayingFile()
+            try:
+                current_file = self.player.getPlayingFile()
+            except:
+                return True
             if self.playing_file != current_file:
                 info('XBMCD restarting due to file change')
                 del self.capture
@@ -1056,7 +1059,7 @@ class XBMCD(object):
         sumtime = 0
         ctime = 0
         tfactor = self.throttle / 100.0
-        evalframenum = int(self.sfps * 10.0)  # After 10 sec of video
+        evalframenum = int(self.sfps * 5.0)  # After 5 sec of video
         self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
@@ -1214,7 +1217,10 @@ class XBMCresults(object):
         self.count += 1
 
     def get_last_result(self):
-        return self.results[self.count - 1]
+        if self.count > 0:
+            return self.results[self.count - 1]
+        else:
+            return None
 
 
 def simulate():
@@ -1232,6 +1238,87 @@ def simulate():
     print 'Done'
 
 
+class TestCriteria(object):
+    TESTING = False
+
+    def __init__(self):
+        self.reports = []
+        self.currentresult = None
+
+    def criteria_met(self, result):
+        """
+        @type result: XBMCDresult
+        @rtype: bool
+        """
+        self.currentresult = result
+        self.reports.append('*** Test Result for q=%s, t=%s ***\n' % (result.qual, result.throttle))
+        criteria = [self._cri_framerate, self._cri_missedframes, self._cri_processtime, self._cri_sleeptime]
+        result = True
+        for criterion in criteria:
+            result = result and criterion()
+        if self.TESTING is True:
+            return False
+        else:
+            return result
+
+    def get_report(self):
+        if len(self.reports) > 0:
+            report = "".join(self.reports)
+            return report
+        else:
+            return ""
+
+    def _cri_framerate(self):
+        met = self.currentresult.fps_xd
+        target = 0.9 * self.currentresult.throttle / 100.0 * self.currentresult.fps_orig
+        result = met > target
+        if result is True:
+            prefix = 'Passed'
+        else:
+            prefix = 'Failed'
+        s = '%s framerate target: %s fps achieved > %s fps target (90%% of desired fps)\n' % (prefix, met, target)
+        self.reports.append(s)
+        return result
+
+    def _cri_missedframes(self):
+        met = self.currentresult.missedframes
+        target = int(0.1 * self.currentresult.numframes)
+        result = met < target
+        if result is True:
+            prefix = 'Passed'
+        else:
+            prefix = 'Failed'
+        s = '%s missed frames target: %s achieved < %s target (10%% of total frames)\n' % (prefix, met, target)
+        self.reports.append(s)
+        return result
+
+    def _cri_processtime(self):
+        met = self.currentresult.processtime / 1000.0
+        target = (0.5 * 1000.0 / self.currentresult.fps_orig)
+        result = met < target
+        if result is True:
+            prefix = 'Passed'
+        else:
+            prefix = 'Failed'
+        s = '%s processing time target: %s ms achieved < %s ms target' \
+            ' (50%% of total time between frames)\n' % (prefix, met, target)
+        self.reports.append(s)
+        return result
+
+    def _cri_sleeptime(self):
+        met = self.currentresult.sleeptime
+        target = 0.5 * 1000.0 / self.currentresult.fps_orig * (100.0 / self.currentresult.throttle)
+        result = met > target
+        if result is True:
+            prefix = 'Passed'
+        else:
+            prefix = 'Failed'
+        s = '%s sleep time target: %s ms achieved > %s ms target' \
+            ' (50%% of total time between desired frames)\n' % (prefix, met, target)
+        self.reports.append(s)
+        return result
+
+
 def test():
     global refresh_settings
     refresh_settings = False
@@ -1245,18 +1332,21 @@ def test():
     url = os.path.join(testpath, 'Test_1080_23.97.mp4' )
     throttle_tests = [50.0, 25.0, 12.5]
     qual_tests = [3, 2, 1, 0]
-    save_throttle = scriptsettings.settings['throttle']
-    save_qual = scriptsettings.settings['directXBMC_quality']
-    save_threading = scriptsettings.settings['use_threading']
-    save_pfl_method = scriptsettings.settings['video_choice']
-    save_instr = scriptsettings.settings['instrumented']
+    settings_to_restore = ['throttle', 'directXBMC_quality', 'use_threading', 'video_choice', 'instrumented']
+    saved_settings = {}
+    for s in settings_to_restore:
+        saved_settings[s] = scriptsettings.settings[s]
     scriptsettings.settings['use_threading'] = False
     scriptsettings.settings['video_choice'] = 1
     scriptsettings.settings['instrumented'] = True
     mp = xbmc.Player()
     t = 100.0
     best_qual = -1
-    for q in qual_tests:
+    numtests = len(qual_tests)
+    i = 0
+    testcriteria = TestCriteria()
+    while i < numtests:
+        q = qual_tests[i]
         info('Starting test: qual = %s, throttle = %s  ################' % (q, t))
         dialog = xbmcgui.Dialog()
         notice = 'Testing qual = %s, throttle = %s' % (q, t)
@@ -1267,16 +1357,23 @@ def test():
         mp.play(url)
         while mp.isPlaying():
             xbmc.sleep(250)
+        xbmc.sleep(1000)
         result = xbmcd_results.get_last_result()
-        if (result.fps_xd > (0.9 * result.fps_orig)) and (result.missedframes < (0.1 * result.numframes)):
-            if (result.processtime / 1000.0) < (0.5 * 1000.0 / result.fps_orig):
-                best_qual = q
-                break
+        if result is None:
+            info('Error retreiving test results, restarting test')
+            continue
+        if testcriteria.criteria_met(result):
+            best_qual = q
+            break
         xbmc.sleep(3000)
+        i += 1
     best_throttle = -1
     if best_qual == -1:
         q = 0
-        for t in throttle_tests:
+        numtests = len(throttle_tests)
+        i = 0
+        while i < numtests:
+            t = throttle_tests[i]
             info('Starting test: qual = %s, throttle = %s  ################' % (q, t))
             dialog = xbmcgui.Dialog()
             notice = 'Testing qual = %s, throttle = %s' % (q, t)
@@ -1288,41 +1385,39 @@ def test():
             while mp.isPlaying():
                 xbmc.sleep(250)
             result = xbmcd_results.get_last_result()
-            dfps = result.fps_orig * t / 100.0
-            if (result.missedframes < (0.1 * result.numframes)) and (result.sleeptime < (0.5 * 1000.0 / result.fps_orig)):
-                if result.fps_xd > (0.9 * dfps):
-                    best_throttle = t
-                    break
+            if result is None:
+                info('Error retreiving test results, restarting test')
+                continue
+            if testcriteria.criteria_met(result):
+                best_throttle = t
+                break
             xbmc.sleep(3000)
+            i += 1
     else:
         best_throttle = 100.0
+
+    #Restore settings
+    for s in settings_to_restore:
+        scriptsettings.settings[s] = saved_settings[s]
+
+    info(testcriteria.get_report())
     if best_qual == -1:
         notification('Optimization failed - see XBMC.log')
         info('Optimization failed to discover optimum results for quality and throttle')
-        scriptsettings.settings['throttle'] = save_throttle
-        scriptsettings.settings['directXBMC_quality'] = save_qual
-        scriptsettings.settings['use_threading'] = save_threading
-        scriptsettings.settings['video_choice'] = save_pfl_method
-        scriptsettings.settings['instrumented'] = save_instr
     else:
-        __settings = xbmcaddon.Addon('script.ambibox')
         info('Optimization test shows best qual =  %s, best throttle = %s' % (best_qual, best_throttle))
         dialog = xbmcgui.Dialog()
         answer = dialog.yesno('Ambibox - XBMC', 'Optimization test shows best qual =  %s, best throttle = %s'
                               % (best_qual, best_throttle), 'Use these settings?', autoclose=30000)
         if answer == 1:
             info('Settings for throttle and qual set to optimized settings')
+            __settings = xbmcaddon.Addon('script.ambibox')
             scriptsettings.settings['throttle'] = best_throttle
             __settings.setSetting('throttle', str(best_throttle))
             scriptsettings.settings['directXBMC_quality'] = best_qual
             __settings.setSetting('directXBMC_quality', str(best_qual))
         else:
             info('Optimized settings discarded')
-            scriptsettings.settings['throttle'] = save_throttle
-            scriptsettings.settings['directXBMC_quality'] = save_qual
-        scriptsettings.settings['use_threading'] = save_threading
-        scriptsettings.settings['video_choice'] = save_pfl_method
-        scriptsettings.settings['instrumented'] = save_instr
     xbmc.sleep(1000)
     refresh_settings = True
 
