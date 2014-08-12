@@ -959,6 +959,7 @@ class XBMCD(object):
         self.sfps = self.infos[4]
         if self.sfps == 0:
             self.sfps = float(xbmc.getInfoLabel('System.FPS'))
+        result.fps_orig = self.sfps
         info('Initial video framerate reported as %s' % str(self.sfps))
         self.tpf = int(1000.0 / self.sfps)
         self.sleeptime = int(0.1 * self.tpf)
@@ -1200,6 +1201,12 @@ class XBMCDresult(object):
     def logresutls(self):
         pass
 
+    def dump(self):
+        r = []
+        for i in self.__dict__:
+            r.append('%s : %s\n' % (i, self.__dict__[i]))
+        return "".join(r)
+
 
 class XBMCresults(object):
 
@@ -1294,6 +1301,10 @@ class TestCriteria(object):
 
     def _cri_processtime(self):
         met = self.currentresult.processtime / 1000.0
+        if self.currentresult.fps_orig == 0:
+            info('Results error - fps_orig = 0')
+            info(self.currentresult.dump())
+            return False
         target = (0.5 * 1000.0 / self.currentresult.fps_orig)
         result = met < target
         if result is True:
@@ -1307,6 +1318,10 @@ class TestCriteria(object):
 
     def _cri_sleeptime(self):
         met = self.currentresult.sleeptime
+        if self.currentresult.fps_orig == 0 or self.currentresult.throttle == 0:
+            info('Results error - fps_orig or throttle = 0')
+            info(self.currentresult.dump())
+            return False
         target = 0.5 * 1000.0 / self.currentresult.fps_orig * (100.0 / self.currentresult.throttle)
         result = met > target
         if result is True:
@@ -1324,12 +1339,12 @@ def test():
     refresh_settings = False
     xbmc.executebuiltin('Dialog.Close(all,true)')
     xbmc.sleep(250)
-    for i in xrange(0,4):
+    for i in xrange(0, 4):
         xbmc.executebuiltin('Action(back)')
         xbmc.sleep(250)
     xbmc.sleep(750)
     testpath = os.path.join(__cwd__, 'resources', 'media')
-    url = os.path.join(testpath, 'Test_1080_23.97.mp4' )
+    url = os.path.join(testpath, 'Test_1080_23.97.mp4')
     throttle_tests = [50.0, 25.0, 12.5]
     qual_tests = [3, 2, 1, 0]
     settings_to_restore = ['throttle', 'directXBMC_quality', 'use_threading', 'video_choice', 'instrumented']
