@@ -463,6 +463,7 @@ class ScriptSettings(object):
                     led_height = led_count / (2 * (sar + 1))
                     led_width = int((led_height * sar) + 0.5)
                     led_height = int(led_height + 0.5)
+                    info('LEDS - count %s, width %s, height %s' % (led_count, led_width, led_height))
             CloseKey(aReg)
         except WindowsError or EnvironmentError, e:
             info("Error reading profile types from registry")
