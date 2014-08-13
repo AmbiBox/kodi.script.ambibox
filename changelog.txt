@@ -1,3 +1,7 @@
+1.0.5.2
+Stricter criteria for optimization
+Implements delay using threading.Timer
+
 1.0.5.1
 Fixes menu bug and termination from non-threaded bug
 Adds optimization test and results structure for XBMCDirect
