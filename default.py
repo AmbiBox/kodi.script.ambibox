@@ -429,6 +429,15 @@ class ScriptSettings(object):
         reg_pfl_names = []
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         try:
+            key = OpenKey(aReg, r'Software\Server IR')
+            led_count = QueryValueEx(key, 'DMX Channel Count')[0] + 1
+        except WindowsError:
+            led_count = 80
+        led_height = led_count / (2 * (sar + 1))
+        led_width = int((led_height * sar) + 0.5)
+        led_height = int(led_height + 0.5)
+        info('LEDS - count %s, width %s, height %s' % (led_count, led_width, led_height))
+        try:
             key = OpenKey(aReg, r'Software\Server IR\Backlight\Profiles')
             profileCount = QueryValueEx(key, 'ProfilesCount')
             if isinstance(profileCount[0], int):
@@ -451,18 +460,6 @@ class ScriptSettings(object):
                     self.profiles.add(pname[0], True)
                 else:
                     self.profiles.add(pname[0], False)
-                if i == 0:
-                    for j in xrange(0, 255):
-                        try:
-                            tmp = QueryValueEx(key, 'LED_%s' % str(j))
-                        except WindowsError:
-                            led_count = j
-                            break
-                    if led_count == 0:
-                        led_count = j
-                    led_height = led_count / (2 * (sar + 1))
-                    led_width = int((led_height * sar) + 0.5)
-                    led_height = int(led_height + 0.5)
             CloseKey(aReg)
         except WindowsError or EnvironmentError, e:
             info("Error reading profile types from registry")
