@@ -46,6 +46,7 @@ from resources.lib.mediainfofromlog import get_log_mediainfo
 AR_16x9 = 16.0/9.0
 AR_4x3 = 4.0/3.0
 MIN_CAPTURE_Y = 64
+TERM = chr(240)
 refresh_settings = True
 
 __language__ = None
@@ -70,6 +71,8 @@ if not simul:
     kbs = None
     Arprofile_info = namedtuple('Arprofile_info', 'profile_name, aspectratio, lower_lmt, upper_lmt')
     xbmc_version = 0
+    led_height = 0
+    led_width = 0
 
 
 def start_debugger(remote=False):
@@ -351,9 +354,9 @@ class ScriptSettings(object):
                           'video_profile', 'key_on_str', 'key_off_str']
         settinglistint = ['video_choice', 'directXBMC_quality']
         settinglistbool = ['notification', 'start_ambibox', 'default_enable', 'audio_enable', 'disable_on_screensaver',
-                           'show_menu', 'use_threading', 'instrumented', 'use_ctypes', '3D_enable', 'key_use', 'key_on_shift',
+                           'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use', 'key_on_shift',
                            'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt']
-        settinglistfloat = ['throttle']
+        settinglistfloat = ['throttle', 'delay']
 
         for s in settingliststr:
             self.settings[s] = str(__settings__.getSetting(s)).decode('utf-8')
@@ -422,6 +425,7 @@ class ScriptSettings(object):
         self.aspect_ratio_settings = arprofiles
 
     def get_profile_types_from_reg(self):
+        global led_height, led_width
         reg_pfl_names = []
         aReg = ConnectRegistry(None, HKEY_CURRENT_USER)
         try:
@@ -447,6 +451,18 @@ class ScriptSettings(object):
                     self.profiles.add(pname[0], True)
                 else:
                     self.profiles.add(pname[0], False)
+                if i == 0:
+                    for j in xrange(0, 255):
+                        try:
+                            tmp = QueryValueEx(key, 'LED_%s' % str(j))
+                        except WindowsError:
+                            led_count = j
+                            break
+                    if led_count == 0:
+                        led_count = j
+                    led_height = led_count / (2 * (sar + 1))
+                    led_width = int((led_height * sar) + 0.5)
+                    led_height = int(led_height + 0.5)
             CloseKey(aReg)
         except WindowsError or EnvironmentError, e:
             info("Error reading profile types from registry")
@@ -692,16 +708,16 @@ class CapturePlayer(xbmc.Player):
 
         # Set quality
         quality = scriptsettings.settings['directXBMC_quality']
-        minq = MIN_CAPTURE_Y
+        minq = led_height
         maxq = infos[1]
         if quality == 0:
             infos[1] = minq
             infos[0] = int(infos[1] * infos[3])
         elif quality == 1:
-            infos[1] = int(minq + ((maxq - minq) / 3))
+            infos[1] = 3 * minq
             infos[0] = int(infos[1] * infos[3])
         elif quality == 2:
-            infos[1] = int(minq + (2 * (maxq - minq) / 3))
+            infos[1] = 6 * minq
             infos[0] = int(infos[1] * infos[3])
         else:
             if infos[3] > sar:
@@ -767,17 +783,17 @@ class CapturePlayer(xbmc.Player):
                 use_threading = scriptsettings.settings['use_threading']
                 throttle = scriptsettings.settings['throttle']
                 instrumented = scriptsettings.settings['instrumented']
-                use_ctype = scriptsettings.settings['use_ctypes']
+                delay = scriptsettings.settings['delay']
                 result.width_capture = infos[0]
                 result.height_capture = infos[1]
                 result.threaded = use_threading
                 result.throttle = throttle
-                result.ctypes = use_ctype
                 result.qual = quality
+                result.delay = delay
 
                 info('XBMCDirect throttle =  %s, qual = %s, captureX = %s, captureY = %s, thread = %s, instr = %s'
                      % (throttle, quality, infos[0], infos[1], use_threading, instrumented))
-                info('Using Ctypes: %s' % str(use_ctype))
+                info('Delay: %s ms' % str(delay))
                 #Start XBMC Direct
                 self.run_XBMCD(infos, result, use_threading, instrumented, throttle)
 
@@ -938,6 +954,7 @@ class XBMCDnormal(object):
 class XBMCD(object):
     TYPE_STANDARD = 1
     TYPE_THREADED = 2
+    TERM = chr(248)
 
     def __init__(self, infos, result, runtype=TYPE_STANDARD, instrumented=False, throttle=100.0):
         self.already_exited = False
@@ -949,6 +966,7 @@ class XBMCD(object):
         self.killswitch = False
         self.playing_file = ''
         self.capture = xbmc.RenderCapture()
+        self.delay = float(scriptsettings.settings['delay']/1000.0)
         tw = self.capture.getHeight()
         th = self.capture.getWidth()
         tar = self.capture.getAspectRatio()
@@ -965,10 +983,10 @@ class XBMCD(object):
         self.sleeptime = int(0.1 * self.tpf)
         self.frame_count = 0
         self.frame_freq_to_chk_file_changed = int(self.sfps * 5.0)
-        if scriptsettings.settings['use_ctypes'] is True:
+        if self.delay == 0:
             self.copy_to_mmap = self.ctype_copy_to_mmap
         else:
-            self.copy_to_mmap = self.reg_copy_to_mmap
+            self.copy_to_mmap = self.delayed_copy_to_mmap
         try:
             self.inDataMap = mmap.mmap(0, self.length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
             if simul:
@@ -1101,6 +1119,7 @@ class XBMCD(object):
                 ctime = 0
         # Exiting
         info('XBMCDirect terminating capture')
+        xbmc.sleep(int(self.delay * 2000))
         del self.capture
         if evalframenum != -1 and self.already_exited is False:
             self.already_exited = True
@@ -1160,11 +1179,13 @@ class XBMCD(object):
                 self.inDataMap[10] = (chr((self.length >> 24) & 0xff))
             #self.inDataMap[11:(11 + self.length)] = str(image)
             self.copy_to_mmap(image)
-            # write first byte to indicate we finished writing the data
-            self.inDataMap[0] = (chr(240))
 
     def reg_copy_to_mmap(self, image):
             self.inDataMap[11:(11 + self.length)] = str(image)
+
+    def delayed_copy_to_mmap(self, image):
+        t = threading.Timer(self.delay, delayed_copy_to_mmap, args=[image, self.inDataMap, self.mmap_address, self.length])
+        t.start()
 
     def ctype_copy_to_mmap(self, image):
         T = (ctypes.c_uint8 * (self.length + 11))
@@ -1174,6 +1195,21 @@ class XBMCD(object):
         if self.mmap_address == 0:
             self.mmap_address = ctypes.addressof(dest) + 11
         ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.length)
+        self.inDataMap[0] = TERM
+
+
+def delayed_copy_to_mmap(msrc, mdest, dest_address, length):
+    T = (ctypes.c_uint8 * (length + 11))
+    U = (ctypes.c_uint8 * length)
+    try:
+        dest = T.from_buffer(mdest)
+        src = U.from_buffer(msrc)
+        if dest_address == 0:
+            dest_address = ctypes.addressof(dest) + 11
+        ctypes.memmove(dest_address, ctypes.addressof(src), length)
+        mdest[0] = TERM
+    except TypeError:
+        pass
 
 
 class XBMCDresult(object):
@@ -1186,7 +1222,7 @@ class XBMCDresult(object):
         self.fps_orig = 0.0
         self.threaded = False
         self.throttle = 0
-        self.ctypes = False
+        self.delay = 0
         self.qual = 0
         self.height_capture = 0
         self.width_capture = 0
@@ -1277,25 +1313,25 @@ class TestCriteria(object):
 
     def _cri_framerate(self):
         met = self.currentresult.fps_xd
-        target = 0.9 * self.currentresult.throttle / 100.0 * self.currentresult.fps_orig
+        target = 0.95 * self.currentresult.throttle / 100.0 * self.currentresult.fps_orig
         result = met > target
         if result is True:
             prefix = 'Passed'
         else:
             prefix = 'Failed'
-        s = '%s framerate target: %s fps achieved > %s fps target (90%% of desired fps)\n' % (prefix, met, target)
+        s = '%s framerate target: %s fps achieved > %s fps target (95%% of desired fps)\n' % (prefix, met, target)
         self.reports.append(s)
         return result
 
     def _cri_missedframes(self):
         met = self.currentresult.missedframes
-        target = int(0.1 * self.currentresult.numframes)
+        target = int(0.05 * self.currentresult.numframes)
         result = met < target
         if result is True:
             prefix = 'Passed'
         else:
             prefix = 'Failed'
-        s = '%s missed frames target: %s achieved < %s target (10%% of total frames)\n' % (prefix, met, target)
+        s = '%s missed frames target: %s achieved < %s target (5%% of total frames)\n' % (prefix, met, target)
         self.reports.append(s)
         return result
 
@@ -1305,14 +1341,14 @@ class TestCriteria(object):
             info('Results error - fps_orig = 0')
             info(self.currentresult.dump())
             return False
-        target = (0.5 * 1000.0 / self.currentresult.fps_orig)
+        target = (0.05 * 1000.0 / self.currentresult.fps_orig)
         result = met < target
         if result is True:
             prefix = 'Passed'
         else:
             prefix = 'Failed'
         s = '%s processing time target: %s ms achieved < %s ms target' \
-            ' (50%% of total time between frames)\n' % (prefix, met, target)
+            ' (5%% of total time between frames)\n' % (prefix, met, target)
         self.reports.append(s)
         return result
 
@@ -1322,14 +1358,14 @@ class TestCriteria(object):
             info('Results error - fps_orig or throttle = 0')
             info(self.currentresult.dump())
             return False
-        target = 0.5 * 1000.0 / self.currentresult.fps_orig * (100.0 / self.currentresult.throttle)
+        target = 0.90 * 1000.0 / self.currentresult.fps_orig * (100.0 / self.currentresult.throttle)
         result = met > target
         if result is True:
             prefix = 'Passed'
         else:
             prefix = 'Failed'
         s = '%s sleep time target: %s ms achieved > %s ms target' \
-            ' (50%% of total time between desired frames)\n' % (prefix, met, target)
+            ' (90%% of total time between desired frames)\n' % (prefix, met, target)
         self.reports.append(s)
         return result
 
@@ -1346,14 +1382,17 @@ def test():
     testpath = os.path.join(__cwd__, 'resources', 'media')
     url = os.path.join(testpath, 'Test_1080_23.97.mp4')
     throttle_tests = [50.0, 25.0, 12.5]
-    qual_tests = [3, 2, 1, 0]
-    settings_to_restore = ['throttle', 'directXBMC_quality', 'use_threading', 'video_choice', 'instrumented']
+    qual_tests = [2, 1, 0]
+    settings_to_restore = ['throttle', 'directXBMC_quality', 'use_threading', 'video_choice', 'instrumented', 'delay',
+                           'video_choice']
     saved_settings = {}
     for s in settings_to_restore:
         saved_settings[s] = scriptsettings.settings[s]
     scriptsettings.settings['use_threading'] = False
     scriptsettings.settings['video_choice'] = 1
     scriptsettings.settings['instrumented'] = True
+    scriptsettings.settings['delay'] = 0
+    scriptsettings.settings['video_choice'] = 1
     mp = xbmc.Player()
     t = 100.0
     best_qual = -1

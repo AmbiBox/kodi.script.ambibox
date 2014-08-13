@@ -322,3 +322,7 @@ msgstr "использовать Ctypes?"
 msgctxt "#32081"
 msgid "Optimize XBMCDirect settings on exit from settings?"
 msgstr "Оптимизируйте параметры XBMCDirect на выходе из настроек?"
+
+msgctxt "#32082"
+msgid "Delay (msec)"
+msgstr "Замедление (миллисекунд)"
