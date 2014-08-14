@@ -28,6 +28,7 @@ import ctypes
 import threading
 from xml.etree import cElementTree as ET
 from collections import namedtuple
+from ctypes import wintypes
 # Modules XBMC
 simul = 'XBMC' not in sys.executable
 if simul:
@@ -47,6 +48,7 @@ AR_16x9 = 16.0/9.0
 AR_4x3 = 4.0/3.0
 MIN_CAPTURE_Y = 64
 TERM = chr(240)
+WM_HOTKEY = 786
 refresh_settings = True
 
 __language__ = None
@@ -355,7 +357,7 @@ class ScriptSettings(object):
         settinglistint = ['video_choice', 'directXBMC_quality']
         settinglistbool = ['notification', 'start_ambibox', 'default_enable', 'audio_enable', 'disable_on_screensaver',
                            'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use', 'key_on_shift',
-                           'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt']
+                           'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt', 'hk_delay']
         settinglistfloat = ['throttle', 'delay']
 
         for s in settingliststr:
@@ -706,7 +708,8 @@ class CapturePlayer(xbmc.Player):
         # Set quality
         quality = scriptsettings.settings['directXBMC_quality']
         minq = led_height
-        maxq = infos[1]
+        if minq < 8:
+            minq = 8
         if quality == 0:
             infos[1] = minq
             infos[0] = int(infos[1] * infos[3])
@@ -900,7 +903,6 @@ class XbmcMonitor(xbmc.Monitor):
 
 
 class XBMCDt(threading.Thread):
-
     def __init__(self, infos, result, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
@@ -1004,6 +1006,13 @@ class XBMCD(object):
             self.exit_event = self.exit_event_threaded
         self.mmap_address = 0
         self.result = result
+        if scriptsettings.settings['hk_delay'] is True:
+            self.hk = True
+            self.chk_hotkeys = self.chk_hotkeys_real
+        else:
+            self.hk = False
+            self.chk_hotkeys = self.chk_hotkeys_dummy
+        self.hotkey_chk = 0
 
     def exit_event_nonthreaded(self):
         if self.frame_count > self.frame_freq_to_chk_file_changed:
@@ -1079,7 +1088,11 @@ class XBMCD(object):
         self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
+        if self.hk is True:
+            init_hotkey()
+            self.hotkey_chk = int(self.sfps)
         while self.exit_event() is False:
+            self.chk_hotkeys(counter)
             with Timer() as t:
                 self.capture.waitForCaptureStateChangeEvent(self.tpf)
                 cgcs = self.capture.getCaptureState()
@@ -1115,6 +1128,10 @@ class XBMCD(object):
                 sumtime = 0
                 ctime = 0
         # Exiting
+        if self.hk:
+            kill_hotkeys()
+            scriptsettings.settings['delay'] = int(self.delay * 1000.0)
+            xbmcaddon.Addon("script.ambibox").setSetting('delay', str(scriptsettings.settings['delay']))
         info('XBMCDirect terminating capture')
         xbmc.sleep(int(self.delay * 2000))
         del self.capture
@@ -1144,6 +1161,31 @@ class XBMCD(object):
                         info('The following frame number(s) were missed: %s' % str(missed_frames))
         self.inDataMap.close()
         self.inDataMap = None
+
+    def chk_hotkeys_real(self, counter):
+        if counter % self.hotkey_chk == 0:
+            try:
+                msg = ctypes.wintypes.MSG()
+                if ctypes.windll.user32.PeekMessageA(ctypes.byref(msg), None, 0, 0, 1) != 0:
+                    if msg.message == WM_HOTKEY:
+                        if msg.wParam == 1:
+                            if self.delay > 0.005:
+                                self.delay -= 0.005
+                            notification('Delay = %s' % int((self.delay * 1000.0) + 0.5))
+                        elif msg.wParam == 2:
+                            if self.delay < 2:
+                                self.delay += 0.005
+                            notification('Delay = %s' % int((self.delay * 1000.0) + 0.5))
+                    ctypes.windll.user32.TranslateMessage(ctypes.byref(msg))
+                    ctypes.windll.user32.DispatchMessageA(ctypes.byref(msg))
+            except Exception as e:
+                info('Hotkey Error')
+                if hasattr(e, 'message'):
+                    info(e.message)
+                kill_hotkeys()
+
+    def chk_hotkeys_dummy(self, counter):
+        pass
 
     def copy_image_to_mmap(self, first_pass):
         image = self.capture.getImage()
@@ -1500,6 +1542,22 @@ def startup():
     xbmcd_results = XBMCresults()
 
 
+def init_hotkey():
+    try:
+        ctypes.windll.user32.RegisterHotKey(None, 1, 0, ord('1'))
+        ctypes.windll.user32.RegisterHotKey(None, 2, 0, ord('3'))
+    except:
+        pass
+
+
+def kill_hotkeys():
+    try:
+        ctypes.windll.user32.UnregisterHotKey(None, 1)
+        ctypes.windll.user32.UnregisterHotKey(None, 2)
+    except:
+        pass
+
+
 def main():
     global ambibox, scriptsettings, gplayer
     info('Service Started - ver %s' % __version__)
@@ -1526,6 +1584,7 @@ def main():
                 count = 0
             count += 1
             xbmc.sleep(250)
+    kill_hotkeys()
     if gplayer is not None:
         gplayer.kill_XBMCDirect()
         gplayer.close()
@@ -1538,7 +1597,7 @@ def main():
 
 
 if __name__ == '__main__':
-    # start_debugger()
+    start_debugger()
     if not simul:
         main()
         info('Ambibox exiting')

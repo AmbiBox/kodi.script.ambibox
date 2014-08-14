@@ -12,7 +12,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Language: en\n""Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#Add-on messages id=32001 to 32081
+#Add-on messages id=32001 to 32083
 
 msgctxt "#32001"
 msgid "General"
@@ -324,4 +324,8 @@ msgstr ""
 
 msgctxt "#32082"
 msgid "Delay (msec)"
+msgstr ""
+
+msgctxt "#32083"
+msgid "Use hotkeys to change delay (1=increase, 3=decrease)"
 msgstr ""
