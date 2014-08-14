@@ -42,15 +42,13 @@ import xbmcvfs
 from resources.lib.ambibox import AmbiBox
 from resources.lib.abxtimer import Timer
 from resources.lib.xbmcoutput import notification, debug, info
-from resources.lib.keyboardxml import KeyboardXml
 from resources.lib.mediainfofromlog import get_log_mediainfo
+from resources.lib.ambiwincon import *
 AR_16x9 = 16.0/9.0
 AR_4x3 = 4.0/3.0
-MIN_CAPTURE_Y = 64
 TERM = chr(240)
-WM_HOTKEY = 786
 refresh_settings = True
-
+killonoffmonitor = False
 __language__ = None
 
 if not simul:
@@ -91,7 +89,6 @@ def start_debugger(remote=False):
         if xbmcvfs.exists(r'C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg'):
             sys.path.append(r'C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
             import pydevd
-
             pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
 
@@ -162,6 +159,7 @@ class XbmcAmbibox(AmbiBox):
         if __settings__.getSetting('start_ambibox') == 'true' and self.is_running is False:
             self.start_ambiboxw()
         self.retrieve_profiles()
+        self.manual_off = False
 
     def get_profiles(self):
         if len(self.profiles) == 0:
@@ -312,7 +310,7 @@ class XbmcAmbibox(AmbiBox):
         if self.connect() == 0:
             self.lock()
             try:
-                if (lightChangeState is self.LIGHTS_ON) and scriptsettings.check_manual_switch() == 'on':
+                if lightChangeState is self.LIGHTS_ON and self.manual_off is False:
                     self.turnOn()
                 elif lightChangeState is self.LIGHTS_OFF:
                     self.turnOff()
@@ -896,7 +894,12 @@ class XbmcMonitor(xbmc.Monitor):
             ambibox.start_ambiboxw()
         chk_mediainfo()
         if scriptsettings.settings['key_use']:
-            kbs.process_keyboard_settings()
+            global killonoffmonitor
+            killonoffmonitor = True
+            xbmc.sleep(1000)
+            t = threading.Thread(target=monitor_onoff)
+            killonoffmonitor = False
+            t.start()
         if __settings__.getSetting('optimize') == 'true':
             __settings__.setSetting('optimize', 'false')
             test()
@@ -1517,6 +1520,58 @@ def test():
     refresh_settings = True
 
 
+def monitor_onoff():
+    d = dict(f1=VK_F1, f2=VK_F2, f3=VK_F3, f4=VK_F4, f5=VK_F5, f6=VK_F6, f7=VK_F7, f8=VK_F8, f9=VK_F9)
+    dmod = {1: MOD_SHIFT, 2: MOD_CONTROL, 3: MOD_ALT}
+    keysets = [['key_on_str', ['key_on_shift', 'key_on_ctrl', 'key_on_alt']],
+               ['key_off_str', ['key_off_shift', 'key_off_ctrl', 'key_off_alt']]]
+    hotkeys = {}
+    for i, (key, mods) in enumerate(keysets, start=1):
+        tk = scriptsettings.settings[key]
+        if len(tk) > 1:
+            k = d[tk]
+        else:
+            k = ord(tk)
+        modx = 0
+        for i2, mod in enumerate(mods, start=1):
+            if scriptsettings.settings[mod] is True:
+                modx = modx | dmod[i2]
+        hotkeys[i+3] = (k, modx)
+    for id, (vk, mod) in hotkeys.items():
+        try:
+            t = ctypes.windll.user32.RegisterHotKey(None, id, mod, vk)
+            if not t:
+                info('Error registering hotkey for on/off')
+        except:
+            pass
+    while not xbmc.abortRequested and not killonoffmonitor:
+        try:
+            msg = ctypes.wintypes.MSG()
+            if ctypes.windll.user32.PeekMessageA(ctypes.byref(msg), None, 0, 0, 1) != 0:
+                if msg.message == WM_HOTKEY:
+                    if msg.wParam == 4:
+                        ambibox.manual_off = False
+                        ambibox.lightSwitch(ambibox.LIGHTS_ON)
+                        notification(__language__(32069))  # @[LEDs On]
+                    elif msg.wParam == 5:
+                        ambibox.manual_off = True
+                        ambibox.lightSwitch(ambibox.LIGHTS_OFF)
+                        notification(__language__(32070))  # @[LEDs Off]
+                ctypes.windll.user32.TranslateMessage(ctypes.byref(msg))
+                ctypes.windll.user32.DispatchMessageA(ctypes.byref(msg))
+        except Exception as e:
+            info('Hotkey Error')
+            if hasattr(e, 'message'):
+                info(e.message)
+            break
+        xbmc.sleep(1000)
+    try:
+        ctypes.windll.user32.UnregisterHotKey(None, 4)
+        ctypes.windll.user32.UnregisterHotKey(None, 5)
+    except:
+        pass
+
+
 def startup():
     global ambibox, screenx, screeny, sar, scriptsettings, kbs, xbmc_version, xbmcd_results
     user32 = ctypes.windll.user32
@@ -1536,9 +1591,6 @@ def startup():
     if __settings__.getSetting('start_ambibox') == 'true':
         ambibox.start_ambiboxw()
     scriptsettings = ScriptSettings()
-    if scriptsettings.settings['key_use']:
-        kbs = KeyboardXml()
-        kbs.process_keyboard_settings()
     xbmcd_results = XBMCresults()
 
 
@@ -1572,6 +1624,9 @@ def main():
                 notification(__language__(32030))  # @[Connected to AmbiBox]
                 ambibox.switch_to_default_profile()
                 gplayer = CapturePlayer()
+                if scriptsettings.settings['key_use']:
+                    t = threading.Thread(target=monitor_onoff)
+                    t.start()
             xbmc.sleep(1000)
         else:
             # This is to get around a bug where onPlayBackStarted is not fired for external players present
@@ -1597,7 +1652,7 @@ def main():
 
 
 if __name__ == '__main__':
-    start_debugger()
+    # start_debugger()
     if not simul:
         main()
         info('Ambibox exiting')
