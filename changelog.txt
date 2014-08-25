@@ -1,3 +1,6 @@
+1.0.5.5
+Measures moving avg of system fps and alerts if falls below 95% of video framerate
+
 1.0.5.3
 Set min qual to avoid too few pixels being sent to ambibox
 Implements hotkeys for changing delay

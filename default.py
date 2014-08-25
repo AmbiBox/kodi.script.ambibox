@@ -27,7 +27,7 @@ from operator import itemgetter
 import ctypes
 import threading
 from xml.etree import cElementTree as ET
-from collections import namedtuple
+from collections import namedtuple, deque
 from ctypes import wintypes
 # Modules XBMC
 simul = 'XBMC' not in sys.executable
@@ -885,6 +885,10 @@ class XbmcMonitor(xbmc.Monitor):
             info('Screensaver started: LEDs off')
 
     def onSettingsChanged(self):
+        xbmc.sleep(250)
+        if xbmc.abortRequested:
+            return
+        info('Settings change detected')
         if refresh_settings is False:
             return
         global scriptsettings, ambibox, __settings__
@@ -953,6 +957,29 @@ class XBMCDnormal(object):
             return False
 
 
+class DQMovingAverage(object):
+
+    def __init__(self, init_avg, window_size, threshold, freq):
+        self.ini = [init_avg for x in xrange(0, window_size)]
+        self.dq = deque(self.ini, window_size)
+        self.threshold = threshold
+        self.freq = freq
+        self.counter = 0
+        self.window_size = window_size
+
+    def calc_moving_avg(self, value):
+        self.dq.append(value)
+        if self.counter >= self.freq:
+            self.counter = 0
+            if (sum(self.dq)/float(self.window_size)) < self.threshold:
+                return True
+            else:
+                return False
+        else:
+            self.counter += 1
+            return False
+
+
 class XBMCD(object):
     TYPE_STANDARD = 1
     TYPE_THREADED = 2
@@ -969,6 +996,7 @@ class XBMCD(object):
         self.playing_file = ''
         self.capture = xbmc.RenderCapture()
         self.delay = float(scriptsettings.settings['delay']/1000.0)
+        self.orig_delay = self.delay
         tw = self.capture.getHeight()
         th = self.capture.getWidth()
         tar = self.capture.getAspectRatio()
@@ -1079,6 +1107,7 @@ class XBMCD(object):
         self.inDataMap = None
 
     def run_i(self):
+        global refresh_settings
         missed_frames = []
         missed_capture_count = 0
         first_pass = True
@@ -1088,6 +1117,8 @@ class XBMCD(object):
         ctime = 0
         tfactor = self.throttle / 100.0
         evalframenum = int(self.sfps * 5.0)  # After 5 sec of video
+        dqma = DQMovingAverage(self.sfps, int(self.sfps * 2 + 0.5), 0.95 * self.sfps, int(self.sfps * 3 + 0.5))
+        # moving average of system fps over 2 seconds checking every three seconds
         self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
@@ -1104,6 +1135,8 @@ class XBMCD(object):
                         self.copy_image_to_mmap(first_pass)
                         first_pass = False
                         counter += 1
+                        if dqma.calc_moving_avg(float(xbmc.getInfoLabel('System.FPS'))):
+                            self.result.framerate_below_threshold += 1
                     ctime += t2.microsecs
                     xbmc.sleep(self.sleeptime)
                 elif cgcs == xbmc.CAPTURE_STATE_WORKING:
@@ -1133,10 +1166,13 @@ class XBMCD(object):
         # Exiting
         if self.hk:
             kill_hotkeys()
-            scriptsettings.settings['delay'] = int(self.delay * 1000.0)
-            xbmcaddon.Addon("script.ambibox").setSetting('delay', str(scriptsettings.settings['delay']))
+            if self.delay != self.orig_delay:
+                scriptsettings.settings['delay'] = int(self.delay * 1000.0)
+                refresh_settings = False
+                xbmcaddon.Addon("script.ambibox").setSetting('delay', str(scriptsettings.settings['delay']))
+                refresh_settings = True
         info('XBMCDirect terminating capture')
-        xbmc.sleep(int(self.delay * 2000))
+        xbmc.sleep(int(self.delay * 1500))
         del self.capture
         if evalframenum != -1 and self.already_exited is False:
             self.already_exited = True
@@ -1162,6 +1198,9 @@ class XBMCD(object):
                     info('XBMCDirect reports missing %s captures due to RenderCapture timeouts' % missed_capture_count)
                     if len(missed_frames) > 0:
                         info('The following frame number(s) were missed: %s' % str(missed_frames))
+                if self.result.framerate_below_threshold > 0:
+                    info('System video framerate fell below 95% of video framerate %s times' %
+                         self.result.framerate_below_threshold)
         self.inDataMap.close()
         self.inDataMap = None
 
@@ -1275,6 +1314,7 @@ class XBMCDresult(object):
         self.processtime = 0
         self.fps_xd = 0.0
         self.fps_sys = 0.0
+        self.framerate_below_threshold = 0
 
     def logresutls(self):
         pass
@@ -1337,7 +1377,8 @@ class TestCriteria(object):
         """
         self.currentresult = result
         self.reports.append('*** Test Result for q=%s, t=%s ***\n' % (result.qual, result.throttle))
-        criteria = [self._cri_framerate, self._cri_missedframes, self._cri_processtime, self._cri_sleeptime]
+        criteria = [self._cri_sysframerate, self._cri_framerate, self._cri_missedframes, self._cri_processtime,
+                    self._cri_sleeptime]
         result = True
         for criterion in criteria:
             result = result and criterion()
@@ -1362,6 +1403,18 @@ class TestCriteria(object):
         else:
             prefix = 'Failed'
         s = '%s framerate target: %s fps achieved > %s fps target (95%% of desired fps)\n' % (prefix, met, target)
+        self.reports.append(s)
+        return result
+
+    def _cri_sysframerate(self):
+        met = self.currentresult.framerate_below_threshold
+        target = 1
+        result = met < target
+        if result is True:
+            prefix = 'Passed'
+        else:
+            prefix = 'Failed'
+        s = '%s system framerate target: system framerate fell below 95%% of video framerate %s times\n' % (prefix, met)
         self.reports.append(s)
         return result
 
@@ -1537,14 +1590,19 @@ def monitor_onoff():
             if scriptsettings.settings[mod] is True:
                 modx = modx | dmod[i2]
         hotkeys[i+3] = (k, modx)
+    success = True
     for id, (vk, mod) in hotkeys.items():
         try:
             t = ctypes.windll.user32.RegisterHotKey(None, id, mod, vk)
             if not t:
                 info('Error registering hotkey for on/off')
+                success = False
         except:
-            pass
-    while not xbmc.abortRequested and not killonoffmonitor:
+            success = False
+        else:
+            if success is True:
+                info('Monitor for on/off hotkeys started thread: %s' % str(threading.current_thread().ident))
+    while not xbmc.abortRequested and not killonoffmonitor and success:
         try:
             msg = ctypes.wintypes.MSG()
             if ctypes.windll.user32.PeekMessageA(ctypes.byref(msg), None, 0, 0, 1) != 0:
@@ -1569,7 +1627,9 @@ def monitor_onoff():
         ctypes.windll.user32.UnregisterHotKey(None, 4)
         ctypes.windll.user32.UnregisterHotKey(None, 5)
     except:
-        pass
+        info('Error unregistering hotkeys')
+    else:
+        info('Hotkeys terminated thread:  %s' % str(threading.current_thread().ident))
 
 
 def startup():
@@ -1611,7 +1671,7 @@ def kill_hotkeys():
 
 
 def main():
-    global ambibox, scriptsettings, gplayer
+    global ambibox, scriptsettings, gplayer, killonoffmonitor
     info('Service Started - ver %s' % __version__)
     startup()
     gplayer = None
@@ -1639,6 +1699,7 @@ def main():
                 count = 0
             count += 1
             xbmc.sleep(250)
+    killonoffmonitor = True
     kill_hotkeys()
     if gplayer is not None:
         gplayer.kill_XBMCDirect()
@@ -1647,6 +1708,12 @@ def main():
         if ambibox is not None:
             ambibox.close()
             del ambibox
+    xbmc.sleep(1000)
+    main_thread = threading.current_thread()
+    for t in threading.enumerate():
+        if t is not main_thread:
+            t.exit()
+            info('Killed thread: %s' % str(t.ident))
     del monitor
     del scriptsettings
 
