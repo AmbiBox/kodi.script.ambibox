@@ -17,6 +17,8 @@
 #    along with this program. If not, see <http://www.gnu.org/licenses/>.
 #
 import xbmc
+import json
+
 
 def get_log_mediainfo():
     """
@@ -35,12 +37,18 @@ def get_log_mediainfo():
     """
     logfn = xbmc.translatePath(r'special://home\XBMC.log')
     xbmc.sleep(250)  # found originally that it wasn't written yet
+    if is_xbmc_debug():
+        lookbacksize = 6144
+        lookbacklines = 60
+    else:
+        lookbacksize = 1024
+        lookbacklines = 10
     with open(logfn, "r") as f:
         f.seek(0, 2)           # Seek @ EOF
         fsize = f.tell()        # Get Size
-        f.seek(max(fsize - 1024, 0), 0)  # Set pos @ last n chars
+        f.seek(max(fsize - lookbacksize, 0), 0)  # Set pos @ last n chars
         lines = f.readlines()       # Read to end
-    lines = lines[-10:]    # Get last 5 lines
+    lines = lines[-lookbacklines:]    # Get last n lines
     ret = None
     for line in lines:
         if 'fps:' in line:
@@ -62,3 +70,18 @@ def get_log_mediainfo():
             if ret['dheight'] != 0:
                 ret['dar'] = float(ret['dwidth'])/float(ret['dheight'])
     return ret
+
+
+def is_xbmc_debug():
+    json_query = xbmc.executeJSONRPC('{ "jsonrpc": "2.0", "id": 0, "method": "Settings.getSettings", "params":'
+                                     ' { "filter":{"section":"system", "category":"debug"} } }')
+    json_query = unicode(json_query, 'utf-8', errors='ignore')
+    json_response = json.loads(json_query)
+
+    if json_response.has_key('result') and json_response['result'].has_key('settings') and json_response['result']['settings'] is not None:
+        for item in json_response['result']['settings']:
+            if item["id"] == "debug.showloginfo":
+                if item["value"] is True:
+                    return True
+                else:
+                    return False

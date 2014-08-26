@@ -571,6 +571,7 @@ class CapturePlayer(xbmc.Player):
         self.mi_called = False
         # Get aspect ratio
         # First try MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
+        info("Reading log **************")
         infox = get_log_mediainfo()
         if infox is not None:
             if infox['dwidth'] != 0:
