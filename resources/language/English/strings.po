@@ -329,3 +329,7 @@ msgstr ""
 msgctxt "#32083"
 msgid "Use hotkeys to change delay (1=increase, 3=decrease)"
 msgstr ""
+
+msgctxt "#32084"
+msgid "Profile for XBMCDirect (requires only one for all asp ratios)"
+msgstr ""

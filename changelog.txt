@@ -1,3 +1,7 @@
+1.0.6
+Uses one and only one profile for XBMCDirect. Initial support for internal handling of SBS and TAB without
+additional profiles
+
 1.0.5.5
 Measures moving avg of system fps and alerts if falls below 95% of video framerate
 Checks if xbmc is logging debug and reads more lines to find video info

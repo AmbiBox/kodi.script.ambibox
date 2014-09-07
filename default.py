@@ -351,7 +351,7 @@ class ScriptSettings(object):
         __settings__ = xbmcaddon.Addon('script.ambibox')
         self.settings = dict()
         settingliststr = ['host', 'port', 'notification', 'default_profile', 'audio_profile',
-                          'video_profile', 'key_on_str', 'key_off_str']
+                          'video_profile', 'key_on_str', 'key_off_str', 'XBMCD_profile']
         settinglistint = ['video_choice', 'directXBMC_quality']
         settinglistbool = ['notification', 'start_ambibox', 'default_enable', 'audio_enable', 'disable_on_screensaver',
                            'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use', 'key_on_shift',
@@ -460,6 +460,11 @@ class ScriptSettings(object):
                     self.profiles.add(pname[0], True)
                 else:
                     self.profiles.add(pname[0], False)
+                if pname[0] == scriptsettings.settings['XBMCD_profile']:
+                    if grabber[0] == 8:
+                        info('Profile %s found and correctly configured for XBMCDirect' % pname[0])
+                    else:
+                        info('Profile %s found however, it is incorrectly configured for XBMCDirect' % pname[0])
             CloseKey(aReg)
         except WindowsError or EnvironmentError, e:
             info("Error reading profile types from registry")
@@ -555,6 +560,7 @@ class CapturePlayer(xbmc.Player):
                     ambibox.lightSwitch(ambibox.LIGHTS_ON)
                 else:
                     ambibox.set_profile(menu[selected])
+                    info('Using menu profile: %s' % str(menu[selected]))
             mquit = True
 
     def onPlayBackPaused(self):
@@ -668,6 +674,7 @@ class CapturePlayer(xbmc.Player):
                     vidfmt = "2D"
         else:
             vidfmt = "2D"
+        info('StereoMode: %s' % vidfmt)
         return vidfmt
 
     def get_dimensions_for_XBMCD(self, infos):
@@ -747,59 +754,62 @@ class CapturePlayer(xbmc.Player):
 
             infos = self.get_aspect_ratio()
             vidfmt = self.get_stereo_format()
-
+            XBMCD_profile = scriptsettings.settings['XBMCD_profile']
             # Switch profile
+            if XBMCD_profile == 'None':
+                videomode = scriptsettings.settings["video_choice"]
+                if videomode == 0:  # Use Default Video Profile
+                    info('Using default video profile')
+                    ambibox.set_profile(scriptsettings.settings["video_profile"])
+                elif videomode == 1:  # Autoswitch
+                    DAR = infos[3]
+                    if DAR != 0:
+                        self.setprofilebydar(DAR, vidfmt)
+                        info('Autoswitched on AR')
+                    else:
+                        info("Error retrieving DAR from video file")
+                elif videomode == 2:  # Show menu
+                    self.showmenu()
+                    info('Using menu for profile pick')
+                elif videomode == 3:  # Turn off
+                    info('User set lights off for video')
+                    ambibox.lightSwitch(ambibox.LIGHTS_OFF)
+            else:
 
-            videomode = scriptsettings.settings["video_choice"]
-            if videomode == 0:  # Use Default Video Profile
-                info('Using default video profile')
-                ambibox.set_profile(scriptsettings.settings["video_profile"])
-            elif videomode == 1:  # Autoswitch
-                DAR = infos[3]
-                if DAR != 0:
-                    self.setprofilebydar(DAR, vidfmt)
-                    info('Autoswitched on AR')
-                else:
-                    info("Error retrieving DAR from video file")
-            elif videomode == 2:  # Show menu
-                self.showmenu()
-                info('Using menu for profile pick')
-            elif videomode == 3:  # Turn off
-                info('User set lights off for video')
-                ambibox.lightSwitch(ambibox.LIGHTS_OFF)
+                # XBMC Direct
 
-            # XBMC Direct
+                info('Switching to profile %s for XBMCDirect' % XBMCD_profile)
+                profile_is_XBMCDirect = scriptsettings.profiles.is_xbmc_direct(XBMCD_profile)
+                if profile_is_XBMCDirect is True:
+                    ambibox.set_profile(XBMCD_profile)
+                    result = XBMCDresult()
+                    result.fn = self.getPlayingFile()
+                    result.height_orig = infos[0]
+                    result.width_orig = infos[1]
+                    result.fps_orig = infos[4]
+                    infos, quality = self.get_dimensions_for_XBMCD(infos)
+                  # Get other settings associated with XBMC Direct
+                    use_threading = scriptsettings.settings['use_threading']
+                    throttle = scriptsettings.settings['throttle']
+                    instrumented = scriptsettings.settings['instrumented']
+                    delay = scriptsettings.settings['delay']
+                    result.width_capture = infos[0]
+                    result.height_capture = infos[1]
+                    result.threaded = use_threading
+                    result.throttle = throttle
+                    result.qual = quality
+                    result.delay = delay
 
-            profile_is_XBMCDirect = scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile)
-            if profile_is_XBMCDirect is True:
-                result = XBMCDresult()
-                result.fn = self.getPlayingFile()
-                result.height_orig = infos[0]
-                result.width_orig = infos[1]
-                result.fps_orig = infos[4]
-                infos, quality = self.get_dimensions_for_XBMCD(infos)
-              # Get other settings associated with XBMC Direct
-                use_threading = scriptsettings.settings['use_threading']
-                throttle = scriptsettings.settings['throttle']
-                instrumented = scriptsettings.settings['instrumented']
-                delay = scriptsettings.settings['delay']
-                result.width_capture = infos[0]
-                result.height_capture = infos[1]
-                result.threaded = use_threading
-                result.throttle = throttle
-                result.qual = quality
-                result.delay = delay
+                    info('XBMCDirect throttle =  %s, qual = %s, captureX = %s, captureY = %s, thread = %s, instr = %s'
+                         % (throttle, quality, infos[0], infos[1], use_threading, instrumented))
+                    info('Delay: %s ms' % str(delay))
+                    #Start XBMC Direct
+                    self.run_XBMCD(infos, vidfmt, result, use_threading, instrumented, throttle)
 
-                info('XBMCDirect throttle =  %s, qual = %s, captureX = %s, captureY = %s, thread = %s, instr = %s'
-                     % (throttle, quality, infos[0], infos[1], use_threading, instrumented))
-                info('Delay: %s ms' % str(delay))
-                #Start XBMC Direct
-                self.run_XBMCD(infos, result, use_threading, instrumented, throttle)
-
-            elif profile_is_XBMCDirect is False:
-                info('XBMCDirect not started because profile not using XBMCDirect')
-            elif profile_is_XBMCDirect is None:
-                info('XBMCDirect not started due to an error detecting whether or not profile uses XBMCDirect')
+                elif profile_is_XBMCDirect is False:
+                    info('XBMCDirect not started because profile not using XBMCDirect')
+                elif profile_is_XBMCDirect is None:
+                    info('XBMCDirect not started due to an error detecting whether or not profile uses XBMCDirect')
 
     def onPlayBackEnded(self):
         if scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile) is True:
@@ -833,13 +843,13 @@ class CapturePlayer(xbmc.Player):
             ambibox.unlock()
             ambibox.disconnect()
 
-    def run_XBMCD(self, infos, result, use_threading, instrumented, throttle=100.0):
+    def run_XBMCD(self, infos, vidfmt, result, use_threading, instrumented, throttle=100.0):
         if use_threading:
             if self.xd is not None:
                 self.kill_XBMCDirect()
             info('XBMCDirect using threading')
             try:
-                p = XBMCDt(infos, result, instrumented=instrumented, throttle=throttle)
+                p = XBMCDt(infos, vidfmt, result, instrumented=instrumented, throttle=throttle)
                 p.start()
             except Exception as e:
                 info('Error starting XBMC Direct threaded')
@@ -848,7 +858,7 @@ class CapturePlayer(xbmc.Player):
                 self.xd = p
         else:
             info('XBMCDirect not using threading')
-            self.xd = XBMCDnormal(infos, result, instrumented=instrumented, throttle=throttle)
+            self.xd = XBMCDnormal(infos, vidfmt, result, instrumented=instrumented, throttle=throttle)
             self.xd.start()
 
     def setprofilebydar(self, aspect_ratio, vidfmt):
@@ -911,17 +921,18 @@ class XbmcMonitor(xbmc.Monitor):
 
 
 class XBMCDt(threading.Thread):
-    def __init__(self, infos, result, instrumented=False, throttle=100.0):
+    def __init__(self, vidfmt, infos, result, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
         self.instrumented = instrumented
         self.throttle = throttle
         self.result = result
+        self.vidfmt = vidfmt
         super(XBMCDt, self).__init__(name='XBMCDt')
 
     def run(self):
         info('XBMCD_threaded run event')
-        self.worker = XBMCD(self.infos, self.result, XBMCD.TYPE_THREADED, self.instrumented, self.throttle)
+        self.worker = XBMCD(self.infos, self.vidfmt, self.result, XBMCD.TYPE_THREADED, self.instrumented, self.throttle)
         self.worker.run()
 
     def stop(self):
@@ -931,15 +942,16 @@ class XBMCDt(threading.Thread):
 
 
 class XBMCDnormal(object):
-    def __init__(self, infos, result, instrumented=False, throttle=100.0):
+    def __init__(self, vidfmt, infos, result, instrumented=False, throttle=100.0):
         self.worker = None
         self.infos = infos
         self.instrumented = instrumented
         self.throttle = throttle
         self.result = result
+        self.vidfmt = vidfmt
 
     def run(self):
-        self.worker = XBMCD(self.infos, self.result, XBMCD.TYPE_STANDARD, self.instrumented, self.throttle)
+        self.worker = XBMCD(self.infos, self.vidfmt, self.result, XBMCD.TYPE_STANDARD, self.instrumented, self.throttle)
         self.worker.run()
 
     def start(self):
@@ -986,7 +998,7 @@ class XBMCD(object):
     TYPE_THREADED = 2
     TERM = chr(248)
 
-    def __init__(self, infos, result, runtype=TYPE_STANDARD, instrumented=False, throttle=100.0):
+    def __init__(self, vidfmt, infos, result, runtype=TYPE_STANDARD, instrumented=False, throttle=100.0):
         self.already_exited = False
         self.infos = infos
         self.inDataMap = None
@@ -1001,10 +1013,9 @@ class XBMCD(object):
         tw = self.capture.getHeight()
         th = self.capture.getWidth()
         tar = self.capture.getAspectRatio()
-        self.width = self.infos[0]
-        self.height = self.infos[1]
-        self.ratio = self.infos[2]
-        self.length = self.width * self.height * 4
+        self.rc_width = self.infos[0]
+        self.rc_height = self.infos[1]
+        self.rc_ratio = self.infos[2]
         self.sfps = self.infos[4]
         if self.sfps == 0:
             self.sfps = float(xbmc.getInfoLabel('System.FPS'))
@@ -1014,12 +1025,31 @@ class XBMCD(object):
         self.sleeptime = int(0.1 * self.tpf)
         self.frame_count = 0
         self.frame_freq_to_chk_file_changed = int(self.sfps * 5.0)
-        if self.delay == 0:
-            self.copy_to_mmap = self.ctype_copy_to_mmap
-        else:
-            self.copy_to_mmap = self.delayed_copy_to_mmap
+        self.vidfmt = vidfmt
+        self.mmap_height = self.rc_height
+        self.mmap_width = self.rc_width
+        if vidfmt == '3DT':
+            self.rc_height *= 2
+            if self.delay == 0:
+                self.copy_to_mmap = self.ctype_copy_to_mmap_TAB
+            else:
+                self.copy_to_mmap = self.delayed_copy_to_mmap_TAB
+        elif vidfmt == '3DS':
+            self.rc_width *= 2
+            if self.delay == 0:
+                self.copy_to_mmap = self.ctype_copy_to_mmap_SBS
+            else:
+                self.copy_to_mmap = self.delayed_copy_to_mmap_SBS
+        else:  # Normal 2D
+            if self.delay == 0:
+                self.copy_to_mmap = self.ctype_copy_to_mmap
+            else:
+                self.copy_to_mmap = self.delayed_copy_to_mmap
+        self.rc_length = self.rc_width * self.rc_height * 4
+        self.mmap_length = self.mmap_height * self.mmap_width * 4
+        self.mmap_ratio = self.rc_ratio
         try:
-            self.inDataMap = mmap.mmap(0, self.length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
+            self.inDataMap = mmap.mmap(0, self.mmap_length + 11, 'AmbiBox_XBMC_SharedMemory', mmap.ACCESS_WRITE)
             if simul:
                 self.inDataMap[0] = chr(248)
         except Exception, e:
@@ -1079,7 +1109,7 @@ class XBMCD(object):
         missed_capture_count = -1  # always misses the first frame
         first_pass = True
         self.frame_count = 0
-        self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+        self.capture.capture(self.rc_width, self.rc_height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
         while self.exit_event() is False:
@@ -1120,7 +1150,7 @@ class XBMCD(object):
         evalframenum = int(self.sfps * 5.0)  # After 5 sec of video
         dqma = DQMovingAverage(self.sfps, int(self.sfps * 2 + 0.5), 0.95 * self.sfps, int(self.sfps * 3 + 0.5))
         # moving average of system fps over 2 seconds checking every three seconds
-        self.capture.capture(self.width, self.height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+        self.capture.capture(self.rc_width, self.rc_height, xbmc.CAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
         if self.hk is True:
@@ -1200,7 +1230,7 @@ class XBMCD(object):
                     if len(missed_frames) > 0:
                         info('The following frame number(s) were missed: %s' % str(missed_frames))
                 if self.result.framerate_below_threshold > 0:
-                    info('System video framerate fell below 95% of video framerate %s times' %
+                    info('System video framerate fell below 95%% of video framerate %s times' %
                          self.result.framerate_below_threshold)
         self.inDataMap.close()
         self.inDataMap = None
@@ -1239,13 +1269,13 @@ class XBMCD(object):
                 info('XBMCDirect Capture successful')
                 notification(__language__(32034))
                 # width
-                self.inDataMap[1] = chr(self.width & 0xff)
-                self.inDataMap[2] = chr((self.width >> 8) & 0xff)
+                self.inDataMap[1] = chr(self.mmap_width & 0xff)
+                self.inDataMap[2] = chr((self.mmap_width >> 8) & 0xff)
                 # height
-                self.inDataMap[3] = (chr(self.height & 0xff))
-                self.inDataMap[4] = (chr((self.height >> 8) & 0xff))
+                self.inDataMap[3] = (chr(self.mmap_height & 0xff))
+                self.inDataMap[4] = (chr((self.mmap_height >> 8) & 0xff))
                 # aspect ratio
-                self.inDataMap[5] = (chr(int(self.ratio * 100)))
+                self.inDataMap[5] = (chr(int(self.mmap_ratio * 100)))
                 # image format
                 fmt = self.capture.getImageFormat()
                 if fmt == 'RGBA':
@@ -1255,40 +1285,101 @@ class XBMCD(object):
                 else:
                     self.inDataMap[6] = (chr(2))
                 # datasize
-                self.inDataMap[7] = (chr(self.length & 0xff))
-                self.inDataMap[8] = (chr((self.length >> 8) & 0xff))
-                self.inDataMap[9] = (chr((self.length >> 16) & 0xff))
-                self.inDataMap[10] = (chr((self.length >> 24) & 0xff))
-            #self.inDataMap[11:(11 + self.length)] = str(image)
+                self.inDataMap[7] = (chr(self.mmap_length & 0xff))
+                self.inDataMap[8] = (chr((self.mmap_length >> 8) & 0xff))
+                self.inDataMap[9] = (chr((self.mmap_length >> 16) & 0xff))
+                self.inDataMap[10] = (chr((self.mmap_length >> 24) & 0xff))
             self.copy_to_mmap(image)
 
-    def reg_copy_to_mmap(self, image):
-            self.inDataMap[11:(11 + self.length)] = str(image)
-
     def delayed_copy_to_mmap(self, image):
-        t = threading.Timer(self.delay, delayed_copy_to_mmap, args=[image, self.inDataMap, self.mmap_address, self.length])
+        t = threading.Timer(self.delay, delayed_copy_to_mmap, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
+        t.start()
+
+    def delayed_copy_to_mmap_TAB(self, image):
+        t = threading.Timer(self.delay, delayed_copy_to_mmap_TAB, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
+        t.start()
+
+    def delayed_copy_to_mmap_SBS(self, image):
+        t = threading.Timer(self.delay, delayed_copy_to_mmap_SBS, args=[image, self.inDataMap, self.rc_width, self.rc_height, self.rc_length, self.mmap_length])
         t.start()
 
     def ctype_copy_to_mmap(self, image):
-        T = (ctypes.c_uint8 * (self.length + 11))
-        U = (ctypes.c_uint8 * self.length)
+        T = (ctypes.c_uint8 * (self.rc_length + 11))
+        U = (ctypes.c_uint8 * self.rc_length)
         dest = T.from_buffer(self.inDataMap)
         src = U.from_buffer(image)
         if self.mmap_address == 0:
             self.mmap_address = ctypes.addressof(dest) + 11
-        ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.length)
+        ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.rc_length)
         self.inDataMap[0] = TERM
 
+    def ctype_copy_to_mmap_TAB(self, image):
+        T = (ctypes.c_uint8 * (self.mmap_length + 11))
+        U = (ctypes.c_uint8 * self.rc_length)
+        dest = T.from_buffer(self.inDataMap)
+        src = U.from_buffer(image)
+        if self.mmap_address == 0:
+            self.mmap_address = ctypes.addressof(dest) + 11
+        ctypes.memmove(self.mmap_address, ctypes.addressof(src), int(self.rc_length/2))
+        self.inDataMap[0] = TERM
 
-def delayed_copy_to_mmap(msrc, mdest, dest_address, length):
-    T = (ctypes.c_uint8 * (length + 11))
-    U = (ctypes.c_uint8 * length)
+    def ctype_copy_to_mmap_SBS(self, image):
+        T = (ctypes.c_uint8 * (self.mmap_length + 11))
+        U = (ctypes.c_uint8 * self.rc_length)
+        linelen = self.mmap_width * 4
+        try:
+            dest = T.from_buffer(self.inDataMap)
+            src = U.from_buffer(image)
+            for i in xrange(0, self.rc_height):
+                offsetsrc = i * linelen * 2
+                offsetdest = i * linelen
+                ctypes.memmove(ctypes.addressof(dest) + 11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
+            self.inDataMap[0] = TERM
+        except TypeError:
+            pass
+        except Exception as e:
+            pass
+
+
+def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
+    T = (ctypes.c_uint8 * (mmap_length + 11))
+    U = (ctypes.c_uint8 * rc_length)
     try:
         dest = T.from_buffer(mdest)
         src = U.from_buffer(msrc)
         if dest_address == 0:
             dest_address = ctypes.addressof(dest) + 11
-        ctypes.memmove(dest_address, ctypes.addressof(src), length)
+        ctypes.memmove(dest_address, ctypes.addressof(src), rc_length)
+        mdest[0] = TERM
+    except TypeError:
+        pass
+
+
+def delayed_copy_to_mmap_TAB(msrc, mdest, dest_address, rc_length, mmap_length):
+    T = (ctypes.c_uint8 * (mmap_length + 11))
+    U = (ctypes.c_uint8 * rc_length)
+    try:
+        dest = T.from_buffer(mdest)
+        src = U.from_buffer(msrc)
+        if dest_address == 0:
+            dest_address = ctypes.addressof(dest) + 11
+        ctypes.memmove(dest_address, ctypes.addressof(src), int(rc_length/2))
+        mdest[0] = TERM
+    except TypeError:
+        pass
+
+
+def delayed_copy_to_mmap_SBS(msrc, mdest, width, height, rc_length, mmap_length):
+    T = (ctypes.c_uint8 * (mmap_length + 11))
+    U = (ctypes.c_uint8 * rc_length)
+    linelen = width * 4
+    try:
+        dest = T.from_buffer(mdest)
+        src = U.from_buffer(msrc)
+        for i in xrange(0, height):
+            offsetsrc = i * width * 4 * 2
+            offsetdest = i * width * 4
+            ctypes.memmove(ctypes.addressof(dest)+11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
         mdest[0] = TERM
     except TypeError:
         pass
@@ -1720,7 +1811,7 @@ def main():
 
 
 if __name__ == '__main__':
-    # start_debugger()
+    start_debugger()
     if not simul:
         main()
         info('Ambibox exiting')
