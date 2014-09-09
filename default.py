@@ -50,6 +50,7 @@ TERM = chr(240)
 refresh_settings = True
 killonoffmonitor = False
 __language__ = None
+# from PIL import Image as PILImage
 
 if not simul:
     __addon__ = xbmcaddon.Addon()
@@ -564,10 +565,12 @@ class CapturePlayer(xbmc.Player):
             mquit = True
 
     def onPlayBackPaused(self):
-        pass
+        info('Playback paused')
 
     def onPlayBackResumed(self):
+        info('Playback resumed')
         if self.getPlayingFile() != self.playing_file:
+            info('Firing onPlayBackStarted due to file change')
             self.onPlayBackEnded()
             self.onPlayBackStarted()
 
@@ -595,7 +598,8 @@ class CapturePlayer(xbmc.Player):
 
         #MediaInfo Method
         try:
-            self.playing_file = self.getPlayingFile()
+            if self.playing_file == '':
+                self.playing_file = self.getPlayingFile()
         except:
             info('Error retrieving video file from xbmc.player')
         if infos[0] != 0 and infos[1] != 0 and (mediax is not None):
@@ -647,33 +651,31 @@ class CapturePlayer(xbmc.Player):
         return infos
 
     def get_stereo_format(self):
-        if scriptsettings.settings['3D_enable'] is True:
+
             # Get Stereoscopic Information
-            # Use infoLabels
+            # Use filename regex or fallback to infoLabels
             #sm2 = getStereoscopicMode()
+
+        m = self.re3D.search(self.playing_file)
+        if m:
+            n = self.reTAB.search(self.playing_file)
+            if n:
+                vidfmt = "3DT"
+            else:
+                n = self.reSBS.search(self.playing_file)
+                if n:
+                    vidfmt = "3DS"
+                else:
+                    info("Error in 3D filename - using default settings")
+                    vidfmt = "2D"
+        else:
             stereomode = xbmc.getInfoLabel("VideoPlayer.StereoscopicMode")
-            vidfmt = ''
             if stereomode == 'top_bottom':
                 vidfmt = '3DT'
             elif stereomode == 'left_right':
                 vidfmt = '3DS'
             else:
-                m = self.re3D.search(self.playing_file)
-                if m:
-                    n = self.reTAB.search(self.playing_file)
-                    if n:
-                        vidfmt = "3DT"
-                    else:
-                        n = self.reSBS.search(self.playing_file)
-                        if n:
-                            vidfmt = "3DS"
-                        else:
-                            info("Error in 3D filename - using default settings")
-                            ambibox.set_profile(scriptsettings["video_profile"])
-                else:
-                    vidfmt = "2D"
-        else:
-            vidfmt = "2D"
+                vidfmt = "2D"
         info('StereoMode: %s' % vidfmt)
         return vidfmt
 
@@ -717,13 +719,13 @@ class CapturePlayer(xbmc.Player):
         if minq < 8:
             minq = 8
         if quality == 0:
-            infos[1] = minq
-            infos[0] = int(infos[1] * infos[3])
-        elif quality == 1:
             infos[1] = 3 * minq
             infos[0] = int(infos[1] * infos[3])
-        elif quality == 2:
+        elif quality == 1:
             infos[1] = 6 * minq
+            infos[0] = int(infos[1] * infos[3])
+        elif quality == 2:
+            infos[1] = 9 * minq
             infos[0] = int(infos[1] * infos[3])
         else:
             if infos[3] > sar:
@@ -738,8 +740,7 @@ class CapturePlayer(xbmc.Player):
 
     def onPlayBackStarted(self):
         if self.xd is not None:
-            del self.xd
-            self.xd = None
+            self.kill_XBMCDirect()
         self.onPBSfired = True
         if ambibox.connect() != 0:
             return
@@ -751,7 +752,7 @@ class CapturePlayer(xbmc.Player):
             ambibox.set_profile(scriptsettings.settings["audio_enable"],
                                 enable=scriptsettings.settings["audio_profile"])
         if self.isPlayingVideo():
-
+            self.playing_file = self.getPlayingFile()
             infos = self.get_aspect_ratio()
             vidfmt = self.get_stereo_format()
             XBMCD_profile = scriptsettings.settings['XBMCD_profile']
@@ -812,6 +813,7 @@ class CapturePlayer(xbmc.Player):
                     info('XBMCDirect not started due to an error detecting whether or not profile uses XBMCDirect')
 
     def onPlayBackEnded(self):
+        self.playing_file = ''
         if scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile) is True:
             self.kill_XBMCDirect()
         if ambibox.connect() == 0:
@@ -821,6 +823,7 @@ class CapturePlayer(xbmc.Player):
     def kill_XBMCDirect(self):
         try:
             if self.xd is not None:
+                info('Terminating XBMCDirect')
                 if self.xd.is_alive:
                     self.xd.stop()
             if self.xd is not None:
@@ -1028,23 +1031,10 @@ class XBMCD(object):
         self.vidfmt = vidfmt
         self.mmap_height = self.rc_height
         self.mmap_width = self.rc_width
-        if vidfmt == '3DT':
-            self.rc_height *= 2
-            if self.delay == 0:
-                self.copy_to_mmap = self.ctype_copy_to_mmap_TAB
-            else:
-                self.copy_to_mmap = self.delayed_copy_to_mmap_TAB
-        elif vidfmt == '3DS':
-            self.rc_width *= 2
-            if self.delay == 0:
-                self.copy_to_mmap = self.ctype_copy_to_mmap_SBS
-            else:
-                self.copy_to_mmap = self.delayed_copy_to_mmap_SBS
-        else:  # Normal 2D
-            if self.delay == 0:
-                self.copy_to_mmap = self.ctype_copy_to_mmap
-            else:
-                self.copy_to_mmap = self.delayed_copy_to_mmap
+        if self.delay == 0:
+            self.copy_to_mmap = self.ctype_copy_to_mmap
+        else:
+            self.copy_to_mmap = self.delayed_copy_to_mmap
         self.rc_length = self.rc_width * self.rc_height * 4
         self.mmap_length = self.mmap_height * self.mmap_width * 4
         self.mmap_ratio = self.rc_ratio
@@ -1075,6 +1065,8 @@ class XBMCD(object):
             self.hk = False
             self.chk_hotkeys = self.chk_hotkeys_dummy
         self.hotkey_chk = 0
+        # self.cap_flag = False
+        # self.capnum = 0
 
     def exit_event_nonthreaded(self):
         if self.frame_count > self.frame_freq_to_chk_file_changed:
@@ -1164,7 +1156,8 @@ class XBMCD(object):
                 if cgcs == xbmc.CAPTURE_STATE_DONE:
                     with Timer() as t2:
                         self.copy_image_to_mmap(first_pass)
-                        first_pass = False
+                        if first_pass is True:
+                            first_pass = False
                         counter += 1
                         if dqma.calc_moving_avg(float(xbmc.getInfoLabel('System.FPS'))):
                             self.result.framerate_below_threshold += 1
@@ -1184,6 +1177,7 @@ class XBMCD(object):
                     break
             sumtime += t.msecs
             if counter == evalframenum:
+                # self.cap_flag = True
                 dfps = self.sfps * tfactor  # calculates a desired fps based on throttle val
                 self.sleeptime = int(0.95 * ((1000.0 / dfps) - (ctime / (1000.0 * counter))))  # 95% of calc sleep
                 info('Over first %s frames, avg process time for render = %s microsecs'
@@ -1265,7 +1259,8 @@ class XBMCD(object):
         self.inDataMap.seek(0)
         seeked = self.inDataMap.read_byte()
         if ord(seeked) == 248:
-            if first_pass:
+            if first_pass is True:
+                # self.cap_flag = True
                 info('XBMCDirect Capture successful')
                 notification(__language__(32034))
                 # width
@@ -1289,19 +1284,23 @@ class XBMCD(object):
                 self.inDataMap[8] = (chr((self.mmap_length >> 8) & 0xff))
                 self.inDataMap[9] = (chr((self.mmap_length >> 16) & 0xff))
                 self.inDataMap[10] = (chr((self.mmap_length >> 24) & 0xff))
+            # if self.cap_flag is True:
+            #     self.capnum += 1
+            #     self.save_rc(image, self.rc_width, self.rc_height)
+            #     self.cap_flag = False
             self.copy_to_mmap(image)
 
     def delayed_copy_to_mmap(self, image):
         t = threading.Timer(self.delay, delayed_copy_to_mmap, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
         t.start()
 
-    def delayed_copy_to_mmap_TAB(self, image):
-        t = threading.Timer(self.delay, delayed_copy_to_mmap_TAB, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
-        t.start()
-
-    def delayed_copy_to_mmap_SBS(self, image):
-        t = threading.Timer(self.delay, delayed_copy_to_mmap_SBS, args=[image, self.inDataMap, self.rc_width, self.rc_height, self.rc_length, self.mmap_length])
-        t.start()
+    # def delayed_copy_to_mmap_TAB(self, image):
+    #     t = threading.Timer(self.delay, delayed_copy_to_mmap_TAB, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
+    #     t.start()
+    #
+    # def delayed_copy_to_mmap_SBS(self, image):
+    #     t = threading.Timer(self.delay, delayed_copy_to_mmap_SBS, args=[image, self.inDataMap, self.rc_width, self.rc_height, self.rc_length, self.mmap_length])
+    #     t.start()
 
     def ctype_copy_to_mmap(self, image):
         T = (ctypes.c_uint8 * (self.rc_length + 11))
@@ -1313,32 +1312,43 @@ class XBMCD(object):
         ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.rc_length)
         self.inDataMap[0] = TERM
 
-    def ctype_copy_to_mmap_TAB(self, image):
-        T = (ctypes.c_uint8 * (self.mmap_length + 11))
-        U = (ctypes.c_uint8 * self.rc_length)
-        dest = T.from_buffer(self.inDataMap)
-        src = U.from_buffer(image)
-        if self.mmap_address == 0:
-            self.mmap_address = ctypes.addressof(dest) + 11
-        ctypes.memmove(self.mmap_address, ctypes.addressof(src), int(self.rc_length/2))
-        self.inDataMap[0] = TERM
+    # def ctype_copy_to_mmap_TAB(self, image):
+    #     T = (ctypes.c_uint8 * (self.mmap_length + 11))
+    #     U = (ctypes.c_uint8 * self.rc_length)
+    #     dest = T.from_buffer(self.inDataMap)
+    #     src = U.from_buffer(image)
+    #     if self.mmap_address == 0:
+    #         self.mmap_address = ctypes.addressof(dest) + 11
+    #     ctypes.memmove(self.mmap_address, ctypes.addressof(src), int(self.rc_length/2))
+    #     self.inDataMap[0] = TERM
+    #
+    # def ctype_copy_to_mmap_SBS(self, image):
+    #     T = (ctypes.c_uint8 * (self.mmap_length + 11))
+    #     U = (ctypes.c_uint8 * self.rc_length)
+    #     linelen = self.mmap_width * 4
+    #     try:
+    #         dest = T.from_buffer(self.inDataMap)
+    #         src = U.from_buffer(image)
+    #         for i in xrange(0, self.rc_height):
+    #             offsetsrc = i * linelen * 2
+    #             offsetdest = i * linelen
+    #             ctypes.memmove(ctypes.addressof(dest) + 11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
+    #         self.inDataMap[0] = TERM
+    #     except TypeError:
+    #         pass
+    #     except Exception as e:
+    #         pass
 
-    def ctype_copy_to_mmap_SBS(self, image):
-        T = (ctypes.c_uint8 * (self.mmap_length + 11))
-        U = (ctypes.c_uint8 * self.rc_length)
-        linelen = self.mmap_width * 4
-        try:
-            dest = T.from_buffer(self.inDataMap)
-            src = U.from_buffer(image)
-            for i in xrange(0, self.rc_height):
-                offsetsrc = i * linelen * 2
-                offsetdest = i * linelen
-                ctypes.memmove(ctypes.addressof(dest) + 11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
-            self.inDataMap[0] = TERM
-        except TypeError:
-            pass
-        except Exception as e:
-            pass
+    # def save_rc(self, image, w, h):
+    #     try:
+    #         pi = PILImage.frombuffer('RGBA', (w, h), image, 'raw', 'RGBA', 0, 1)
+    #         pi.save('C:\\Users\\Ken User\\Desktop\\rc_cap%s.png' % self.capnum)
+    #     except Exception as e:
+    #         info('Error saving screen cap')
+    #         pass
+    #         pass
+    #     else:
+    #         info('Capture succesful num: %s' % self.capnum)
 
 
 def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
@@ -1355,34 +1365,34 @@ def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
         pass
 
 
-def delayed_copy_to_mmap_TAB(msrc, mdest, dest_address, rc_length, mmap_length):
-    T = (ctypes.c_uint8 * (mmap_length + 11))
-    U = (ctypes.c_uint8 * rc_length)
-    try:
-        dest = T.from_buffer(mdest)
-        src = U.from_buffer(msrc)
-        if dest_address == 0:
-            dest_address = ctypes.addressof(dest) + 11
-        ctypes.memmove(dest_address, ctypes.addressof(src), int(rc_length/2))
-        mdest[0] = TERM
-    except TypeError:
-        pass
-
-
-def delayed_copy_to_mmap_SBS(msrc, mdest, width, height, rc_length, mmap_length):
-    T = (ctypes.c_uint8 * (mmap_length + 11))
-    U = (ctypes.c_uint8 * rc_length)
-    linelen = width * 4
-    try:
-        dest = T.from_buffer(mdest)
-        src = U.from_buffer(msrc)
-        for i in xrange(0, height):
-            offsetsrc = i * width * 4 * 2
-            offsetdest = i * width * 4
-            ctypes.memmove(ctypes.addressof(dest)+11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
-        mdest[0] = TERM
-    except TypeError:
-        pass
+# def delayed_copy_to_mmap_TAB(msrc, mdest, dest_address, rc_length, mmap_length):
+#     T = (ctypes.c_uint8 * (mmap_length + 11))
+#     U = (ctypes.c_uint8 * rc_length)
+#     try:
+#         dest = T.from_buffer(mdest)
+#         src = U.from_buffer(msrc)
+#         if dest_address == 0:
+#             dest_address = ctypes.addressof(dest) + 11
+#         ctypes.memmove(dest_address, ctypes.addressof(src), mmap_length)
+#         mdest[0] = TERM
+#     except TypeError:
+#         pass
+#
+#
+# def delayed_copy_to_mmap_SBS(msrc, mdest, width, height, rc_length, mmap_length):
+#     T = (ctypes.c_uint8 * (mmap_length + 11))
+#     U = (ctypes.c_uint8 * rc_length)
+#     linelen = width * 4
+#     try:
+#         dest = T.from_buffer(mdest)
+#         src = U.from_buffer(msrc)
+#         for i in xrange(0, height):
+#             offsetsrc = i * width * 4 * 2
+#             offsetdest = i * width * 4
+#             ctypes.memmove(ctypes.addressof(dest)+11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
+#         mdest[0] = TERM
+#     except TypeError:
+#         pass
 
 
 class XBMCDresult(object):
@@ -1804,8 +1814,13 @@ def main():
     main_thread = threading.current_thread()
     for t in threading.enumerate():
         if t is not main_thread:
-            t.exit()
-            info('Killed thread: %s' % str(t.ident))
+            info('Attempting to kill thread: %s' % str(t.ident))
+            try:
+                t.exit()
+            except:
+                info('Error killing thread')
+            else:
+                info('Thread killed succesfully')
     del monitor
     del scriptsettings
 

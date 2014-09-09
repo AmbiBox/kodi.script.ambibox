@@ -41,8 +41,8 @@ def get_log_mediainfo():
         lookbacksize = 6144
         lookbacklines = 60
     else:
-        lookbacksize = 1024
-        lookbacklines = 10
+        lookbacksize = 2560
+        lookbacklines = 25
     with open(logfn, "r") as f:
         f.seek(0, 2)           # Seek @ EOF
         fsize = f.tell()        # Get Size
