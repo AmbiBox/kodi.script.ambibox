@@ -279,7 +279,7 @@ msgid "LEDs Off"
 msgstr ""
 
 msgctxt "#32071"
-msgid "Keyboard"
+msgid "Hotkeys"
 msgstr ""
 
 msgctxt "#32072"
@@ -287,7 +287,7 @@ msgid "Requires XBMC restart to effect changes!"
 msgstr ""
 
 msgctxt "#32073"
-msgid "Use Hotkeys Below?"
+msgid "Use hotkeys To Turn LEDs On/Off?"
 msgstr ""
 
 msgctxt "#32074"
@@ -326,10 +326,30 @@ msgctxt "#32082"
 msgid "Delay (msec)"
 msgstr ""
 
-msgctxt "#32083"
-msgid "Use hotkeys to change delay (1=increase, 3=decrease)"
-msgstr ""
-
 msgctxt "#32084"
 msgid "Profile for XBMCDirect (requires only one for all asp ratios)"
+msgstr ""
+
+msgctxt "#32083"
+msgid "Use hotkeys to change delay?"
+msgstr ""
+
+msgctxt "#32085"
+msgid "Hotkey to increase delay:"
+msgstr ""
+
+msgctxt "#32086"
+msgid "Hotkey to decrease delay:"
+msgstr ""
+
+msgctxt "#32087"
+msgid "Use hotkey to capture buffer for XBMCDirect?"
+msgstr ""
+
+msgctxt "#32088"
+msgid "Hotkey for capture"
+msgstr ""
+
+msgctxt "#32089"
+msgid "File directory for capture"
 msgstr ""

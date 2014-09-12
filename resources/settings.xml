@@ -26,7 +26,7 @@
     <setting default="false" id="use_threading" label="32078" type="bool" visible="false" />
     <setting default="true" id="instrumented" label="32079" type="bool" visible="false" />
     <setting default="100" enable="eq(-1,true)" id="throttle" label="32068" range="1,2.5,100" type="slider" />
-    <setting default="0" id="delay" label="32082" option="int" range="0,5,2000" type="slider" />
+    <setting default="0" id="delay" label="32082" option="int" range="0,25,2000" type="slider" />
     <setting default="false" id="hk_delay" label="32083" type="bool" />
  </category>
 
@@ -58,7 +58,7 @@
 </category>
 <category label="32071">
     <setting label="32072" type="lsep" />
-    <setting default="false" id="key_use" label="32073" type="bool" />
+    <setting default="false" id="key_use_onoff" label="32073" type="bool" />
     <setting label="32069" type="lsep" />
     <setting default="false" enable="eq(-2,true)" id="key_on_shift" label="32074" type="bool" />
     <setting default="true" enable="eq(-3,true)" id="key_on_ctrl" label="32075" type="bool" />
@@ -69,5 +69,25 @@
     <setting default="true" enable="eq(-8,true)" id="key_off_ctrl" label="32075" type="bool" />
     <setting default="false" enable="eq(-9,true)" id="key_off_alt" label="32076" type="bool" />
     <setting default="f8" enable="eq(-10,true)" id="key_off_str" label="32077" type="text" />
+    <setting type="lsep" />
+    <setting default="false" id="key_use_delay" label="32083" type="bool" />
+    <setting label="32085" type="lsep" />
+    <setting default="false" enable="eq(-2,true)" id="key_incr_shift" label="32074" type="bool" />
+    <setting default="false" enable="eq(-3,true)" id="key_incr_ctrl" label="32075" type="bool" />
+    <setting default="false" enable="eq(-4,true)" id="key_incr_alt" label="32076" type="bool" />
+    <setting default="3" enable="eq(-5,true)" id="key_incr_str" label="32077" type="text" />
+    <setting label="32086" type="lsep" />
+    <setting default="false" enable="eq(-7,true)" id="key_decr_shift" label="32074" type="bool" />
+    <setting default="false" enable="eq(-8,true)" id="key_decr_ctrl" label="32075" type="bool" />
+    <setting default="false" enable="eq(-9,true)" id="key_decr_alt" label="32076" type="bool" />
+    <setting default="1" enable="eq(-10,true)" id="key_decr_str" label="32077" type="text" />
+    <setting type="lsep" />
+    <setting default="false" id="key_use_cap" label="32087" type="bool" />
+    <setting label="32088" type="lsep" />
+    <setting default="false" enable="eq(-2,true)" id="key_cap_shift" label="32074" type="bool" />
+    <setting default="false" enable="eq(-3,true)" id="key_cap_ctrl" label="32075" type="bool" />
+    <setting default="false" enable="eq(-4,true)" id="key_cap_alt" label="32076" type="bool" />
+    <setting default="5" enable="eq(-5,true)" id="key_cap_str" label="32077" type="text" />
+    <setting default="special://profile/addon_data/script.ambibox/" enable="eq(-6,true)" id="key_cap_dir" label="32089" option="writeable" type="folder" />
 </category>
 </settings>

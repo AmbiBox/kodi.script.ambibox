@@ -50,7 +50,8 @@ TERM = chr(240)
 refresh_settings = True
 killonoffmonitor = False
 __language__ = None
-# from PIL import Image as PILImage
+from PIL import Image as PILImage
+import datetime
 
 if not simul:
     __addon__ = xbmcaddon.Addon()
@@ -352,11 +353,14 @@ class ScriptSettings(object):
         __settings__ = xbmcaddon.Addon('script.ambibox')
         self.settings = dict()
         settingliststr = ['host', 'port', 'notification', 'default_profile', 'audio_profile',
-                          'video_profile', 'key_on_str', 'key_off_str', 'XBMCD_profile']
+                          'video_profile', 'key_on_str', 'key_off_str', 'key_incr_str', 'key_decr_str',
+                          'key_cap_str', 'key_cap_dir', 'XBMCD_profile']
         settinglistint = ['video_choice', 'directXBMC_quality']
         settinglistbool = ['notification', 'start_ambibox', 'default_enable', 'audio_enable', 'disable_on_screensaver',
-                           'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use', 'key_on_shift',
-                           'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt', 'hk_delay']
+                           'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use_onoff', 'key_on_shift',
+                           'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt', 'hk_delay',
+                           'key_use_delay', 'key_incr_shift', 'key_incr_ctrl', 'key_incr_alt', 'key_decr_shift',
+                           'key_decr_ctrl', 'key_decr_alt', 'key_cap_shift', 'key_cap_ctrl', 'key_cap_alt']
         settinglistfloat = ['throttle', 'delay']
 
         for s in settingliststr:
@@ -373,6 +377,13 @@ class ScriptSettings(object):
                 self.settings[s] = False
         for s in settinglistfloat:
             self.settings[s] = float(__settings__.getSetting(s))
+        if int(self.settings['delay']) % 25 != 0:
+            # make delay a mulitple of 25 msec
+            global refresh_settings
+            self.settings['delay'] = float(((self.settings['delay'] + 12.5) // 25) * 25)
+            refresh_settings = False
+            __settings__.setSetting('delay', str(self.settings['delay']))
+            refresh_settings = True
         self.chkProfileSettings()
         self.updateprofilesettings()
         self.get_ar_profiles()
@@ -461,7 +472,7 @@ class ScriptSettings(object):
                     self.profiles.add(pname[0], True)
                 else:
                     self.profiles.add(pname[0], False)
-                if pname[0] == scriptsettings.settings['XBMCD_profile']:
+                if pname[0] == self.settings['XBMCD_profile']:
                     if grabber[0] == 8:
                         info('Profile %s found and correctly configured for XBMCDirect' % pname[0])
                     else:
@@ -579,7 +590,7 @@ class CapturePlayer(xbmc.Player):
         infos = [0, 0, 1, 0, 0]
         self.mi_called = False
         # Get aspect ratio
-        # First try MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
+        # First try Log, then MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
         info("Reading log **************")
         infox = get_log_mediainfo()
         if infox is not None:
@@ -899,19 +910,17 @@ class XbmcMonitor(xbmc.Monitor):
             info('Screensaver started: LEDs off')
 
     def onSettingsChanged(self):
-        xbmc.sleep(250)
-        if xbmc.abortRequested:
+        if xbmc.abortRequested or refresh_settings is False:
             return
         info('Settings change detected')
-        if refresh_settings is False:
-            return
+        xbmc.sleep(250)
         global scriptsettings, ambibox, __settings__
         __settings__ = xbmcaddon.Addon('script.ambibox')
         scriptsettings.refresh_settings()
         if scriptsettings.settings['start_ambibox'] is True and ambibox.is_running is False:
             ambibox.start_ambiboxw()
         chk_mediainfo()
-        if scriptsettings.settings['key_use']:
+        if scriptsettings.settings['key_use_onoff']:
             global killonoffmonitor
             killonoffmonitor = True
             xbmc.sleep(1000)
@@ -1065,8 +1074,9 @@ class XBMCD(object):
             self.hk = False
             self.chk_hotkeys = self.chk_hotkeys_dummy
         self.hotkey_chk = 0
-        # self.cap_flag = False
-        # self.capnum = 0
+        self.cap_flag = False
+        self.capnum = 0
+        self.cap_dir = xbmc.translatePath(scriptsettings.settings['key_cap_dir'])
 
     def exit_event_nonthreaded(self):
         if self.frame_count > self.frame_freq_to_chk_file_changed:
@@ -1149,7 +1159,8 @@ class XBMCD(object):
             init_hotkey()
             self.hotkey_chk = int(self.sfps)
         while self.exit_event() is False:
-            self.chk_hotkeys(counter)
+            if self.hk is True:
+                self.chk_hotkeys(counter)
             with Timer() as t:
                 self.capture.waitForCaptureStateChangeEvent(self.tpf)
                 cgcs = self.capture.getCaptureState()
@@ -1236,13 +1247,15 @@ class XBMCD(object):
                 if ctypes.windll.user32.PeekMessageA(ctypes.byref(msg), None, 0, 0, 1) != 0:
                     if msg.message == WM_HOTKEY:
                         if msg.wParam == 1:
-                            if self.delay > 0.005:
-                                self.delay -= 0.005
-                            notification('Delay = %s' % int((self.delay * 1000.0) + 0.5))
+                            if self.delay >= 0.025:
+                                self.delay -= 0.0250
+                            notification('Delay = %s' % int(self.delay * 1000))
                         elif msg.wParam == 2:
                             if self.delay < 2:
-                                self.delay += 0.005
-                            notification('Delay = %s' % int((self.delay * 1000.0) + 0.5))
+                                self.delay += 0.0250
+                            notification('Delay = %s' % int(self.delay * 1000))
+                        elif msg.wParam == 3:
+                            self.cap_flag = True
                     ctypes.windll.user32.TranslateMessage(ctypes.byref(msg))
                     ctypes.windll.user32.DispatchMessageA(ctypes.byref(msg))
             except Exception as e:
@@ -1284,11 +1297,12 @@ class XBMCD(object):
                 self.inDataMap[8] = (chr((self.mmap_length >> 8) & 0xff))
                 self.inDataMap[9] = (chr((self.mmap_length >> 16) & 0xff))
                 self.inDataMap[10] = (chr((self.mmap_length >> 24) & 0xff))
-            # if self.cap_flag is True:
-            #     self.capnum += 1
-            #     self.save_rc(image, self.rc_width, self.rc_height)
-            #     self.cap_flag = False
             self.copy_to_mmap(image)
+            if self.cap_flag is True:
+                self.capnum += 1
+                t = threading.Thread(target=save_rc, args=(image, self.rc_width, self.rc_height, self.cap_dir, self.capnum))
+                t.start()
+                self.cap_flag = False
 
     def delayed_copy_to_mmap(self, image):
         t = threading.Timer(self.delay, delayed_copy_to_mmap, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
@@ -1339,16 +1353,20 @@ class XBMCD(object):
     #     except Exception as e:
     #         pass
 
-    # def save_rc(self, image, w, h):
-    #     try:
-    #         pi = PILImage.frombuffer('RGBA', (w, h), image, 'raw', 'RGBA', 0, 1)
-    #         pi.save('C:\\Users\\Ken User\\Desktop\\rc_cap%s.png' % self.capnum)
-    #     except Exception as e:
-    #         info('Error saving screen cap')
-    #         pass
-    #         pass
-    #     else:
-    #         info('Capture succesful num: %s' % self.capnum)
+
+def save_rc(image, w, h, cap_dir, capnum):
+    try:
+        pi = PILImage.frombuffer('RGBA', (w, h), image, 'raw', 'RGBA', 0, 1)
+        pis = pi.tostring()
+        pi_fixed = PILImage.fromstring('RGBA', (w, h), pis, 'raw', 'BGRA', 0, 1)
+        mtime = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        fn = '%s\XBMCDirectCap%s-%s.png' % (cap_dir, capnum, mtime)
+        pi_fixed.save(fn)
+    except Exception as e:
+        info('Error saving screen cap')
+    else:
+        info('Capture succesful num: %s' % capnum)
+        notification('XBMCDirect buffer captured to file')
 
 
 def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
@@ -1458,7 +1476,8 @@ def simulate():
 
     __language__ = language
     infos = [1920, 1080, 1, 2.4, 23.97]
-    xd = XBMCDt(infos, True)
+    result = XBMCDresult()
+    xd = XBMCDt('2D', infos, result, True)
     xd.start()
     time.sleep(10)
     xd.stop()
@@ -1693,9 +1712,9 @@ def monitor_onoff():
                 modx = modx | dmod[i2]
         hotkeys[i+3] = (k, modx)
     success = True
-    for id, (vk, mod) in hotkeys.items():
+    for myid, (vk, mod) in hotkeys.items():
         try:
-            t = ctypes.windll.user32.RegisterHotKey(None, id, mod, vk)
+            t = ctypes.windll.user32.RegisterHotKey(None, myid, mod, vk)
             if not t:
                 info('Error registering hotkey for on/off')
                 success = False
@@ -1757,17 +1776,43 @@ def startup():
 
 
 def init_hotkey():
-    try:
-        ctypes.windll.user32.RegisterHotKey(None, 1, 0, ord('1'))
-        ctypes.windll.user32.RegisterHotKey(None, 2, 0, ord('3'))
-    except:
-        pass
+    d = dict(f1=VK_F1, f2=VK_F2, f3=VK_F3, f4=VK_F4, f5=VK_F5, f6=VK_F6, f7=VK_F7, f8=VK_F8, f9=VK_F9)
+    dmod = {1: MOD_SHIFT, 2: MOD_CONTROL, 3: MOD_ALT}
+    keysets = [['key_incr_str', ['key_incr_shift', 'key_incr_ctrl', 'key_incr_alt']],
+               ['key_decr_str', ['key_decr_shift', 'key_decr_ctrl', 'key_decr_alt']],
+               ['key_cap_str', ['key_cap_shift', 'key_cap_ctrl', 'key_cap_alt']]]
+    hotkeys = {}
+    for i, (key, mods) in enumerate(keysets, start=1):
+        tk = scriptsettings.settings[key]
+        if len(tk) > 1:
+            k = d[tk]
+        else:
+            k = ord(tk)
+        modx = 0
+        for i2, mod in enumerate(mods, start=1):
+            if scriptsettings.settings[mod] is True:
+                modx = modx | dmod[i2]
+        hotkeys[i] = (k, modx)
+    success = True
+    for myid, (vk, mod) in hotkeys.items():
+        try:
+            t = ctypes.windll.user32.RegisterHotKey(None, myid, mod, vk)
+            if not t:
+                success = False
+        except:
+            success = False
+        finally:
+            if success is True:
+                info('Monitor for XBMCDirect hotkeys started')
+            else:
+                info('Error registering XBMCDirect hotkeys')
 
 
 def kill_hotkeys():
     try:
         ctypes.windll.user32.UnregisterHotKey(None, 1)
         ctypes.windll.user32.UnregisterHotKey(None, 2)
+        ctypes.windll.user32.UnregisterHotKey(None, 3)
     except:
         pass
 
@@ -1786,7 +1831,7 @@ def main():
                 notification(__language__(32030))  # @[Connected to AmbiBox]
                 ambibox.switch_to_default_profile()
                 gplayer = CapturePlayer()
-                if scriptsettings.settings['key_use']:
+                if scriptsettings.settings['key_use_onoff']:
                     t = threading.Thread(target=monitor_onoff)
                     t.start()
             xbmc.sleep(1000)
@@ -1826,7 +1871,7 @@ def main():
 
 
 if __name__ == '__main__':
-    start_debugger()
+    # start_debugger()
     if not simul:
         main()
         info('Ambibox exiting')
