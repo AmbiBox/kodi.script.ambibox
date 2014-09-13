@@ -358,9 +358,9 @@ class ScriptSettings(object):
         settinglistint = ['video_choice', 'directXBMC_quality']
         settinglistbool = ['notification', 'start_ambibox', 'default_enable', 'audio_enable', 'disable_on_screensaver',
                            'show_menu', 'use_threading', 'instrumented', '3D_enable', 'key_use_onoff', 'key_on_shift',
-                           'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt', 'hk_delay',
-                           'key_use_delay', 'key_incr_shift', 'key_incr_ctrl', 'key_incr_alt', 'key_decr_shift',
-                           'key_decr_ctrl', 'key_decr_alt', 'key_cap_shift', 'key_cap_ctrl', 'key_cap_alt']
+                           'key_on_ctrl', 'key_on_alt', 'key_off_shift', 'key_off_ctrl', 'key_off_alt', 'key_use_delay',
+                           'key_incr_shift', 'key_incr_ctrl', 'key_incr_alt', 'key_decr_shift', 'key_decr_ctrl',
+                           'key_decr_alt', 'key_use_cap', 'key_cap_shift', 'key_cap_ctrl', 'key_cap_alt']
         settinglistfloat = ['throttle', 'delay']
 
         for s in settingliststr:
@@ -1067,7 +1067,7 @@ class XBMCD(object):
             self.exit_event = self.exit_event_threaded
         self.mmap_address = 0
         self.result = result
-        if scriptsettings.settings['hk_delay'] is True:
+        if scriptsettings.settings['key_use_delay'] is True:
             self.hk = True
             self.chk_hotkeys = self.chk_hotkeys_real
         else:
@@ -1077,6 +1077,7 @@ class XBMCD(object):
         self.cap_flag = False
         self.capnum = 0
         self.cap_dir = xbmc.translatePath(scriptsettings.settings['key_cap_dir'])
+        self.first_pass = True
 
     def exit_event_nonthreaded(self):
         if self.frame_count > self.frame_freq_to_chk_file_changed:
@@ -1143,7 +1144,6 @@ class XBMCD(object):
         global refresh_settings
         missed_frames = []
         missed_capture_count = 0
-        first_pass = True
         self.frame_count = 0
         counter = 0
         sumtime = 0
@@ -1166,9 +1166,7 @@ class XBMCD(object):
                 cgcs = self.capture.getCaptureState()
                 if cgcs == xbmc.CAPTURE_STATE_DONE:
                     with Timer() as t2:
-                        self.copy_image_to_mmap(first_pass)
-                        if first_pass is True:
-                            first_pass = False
+                        self.copy_image_to_mmap()
                         counter += 1
                         if dqma.calc_moving_avg(float(xbmc.getInfoLabel('System.FPS'))):
                             self.result.framerate_below_threshold += 1
@@ -1188,7 +1186,6 @@ class XBMCD(object):
                     break
             sumtime += t.msecs
             if counter == evalframenum:
-                # self.cap_flag = True
                 dfps = self.sfps * tfactor  # calculates a desired fps based on throttle val
                 self.sleeptime = int(0.95 * ((1000.0 / dfps) - (ctime / (1000.0 * counter))))  # 95% of calc sleep
                 info('Over first %s frames, avg process time for render = %s microsecs'
@@ -1267,15 +1264,15 @@ class XBMCD(object):
     def chk_hotkeys_dummy(self, counter):
         pass
 
-    def copy_image_to_mmap(self, first_pass):
+    def copy_image_to_mmap(self):
         image = self.capture.getImage()
         self.inDataMap.seek(0)
         seeked = self.inDataMap.read_byte()
         if ord(seeked) == 248:
-            if first_pass is True:
-                # self.cap_flag = True
+            if self.first_pass is True:
                 info('XBMCDirect Capture successful')
                 notification(__language__(32034))
+                self.first_pass = False
                 # width
                 self.inDataMap[1] = chr(self.mmap_width & 0xff)
                 self.inDataMap[2] = chr((self.mmap_width >> 8) & 0xff)
@@ -1308,14 +1305,6 @@ class XBMCD(object):
         t = threading.Timer(self.delay, delayed_copy_to_mmap, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
         t.start()
 
-    # def delayed_copy_to_mmap_TAB(self, image):
-    #     t = threading.Timer(self.delay, delayed_copy_to_mmap_TAB, args=[image, self.inDataMap, self.mmap_address, self.rc_length, self.mmap_length])
-    #     t.start()
-    #
-    # def delayed_copy_to_mmap_SBS(self, image):
-    #     t = threading.Timer(self.delay, delayed_copy_to_mmap_SBS, args=[image, self.inDataMap, self.rc_width, self.rc_height, self.rc_length, self.mmap_length])
-    #     t.start()
-
     def ctype_copy_to_mmap(self, image):
         T = (ctypes.c_uint8 * (self.rc_length + 11))
         U = (ctypes.c_uint8 * self.rc_length)
@@ -1325,33 +1314,6 @@ class XBMCD(object):
             self.mmap_address = ctypes.addressof(dest) + 11
         ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.rc_length)
         self.inDataMap[0] = TERM
-
-    # def ctype_copy_to_mmap_TAB(self, image):
-    #     T = (ctypes.c_uint8 * (self.mmap_length + 11))
-    #     U = (ctypes.c_uint8 * self.rc_length)
-    #     dest = T.from_buffer(self.inDataMap)
-    #     src = U.from_buffer(image)
-    #     if self.mmap_address == 0:
-    #         self.mmap_address = ctypes.addressof(dest) + 11
-    #     ctypes.memmove(self.mmap_address, ctypes.addressof(src), int(self.rc_length/2))
-    #     self.inDataMap[0] = TERM
-    #
-    # def ctype_copy_to_mmap_SBS(self, image):
-    #     T = (ctypes.c_uint8 * (self.mmap_length + 11))
-    #     U = (ctypes.c_uint8 * self.rc_length)
-    #     linelen = self.mmap_width * 4
-    #     try:
-    #         dest = T.from_buffer(self.inDataMap)
-    #         src = U.from_buffer(image)
-    #         for i in xrange(0, self.rc_height):
-    #             offsetsrc = i * linelen * 2
-    #             offsetdest = i * linelen
-    #             ctypes.memmove(ctypes.addressof(dest) + 11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
-    #         self.inDataMap[0] = TERM
-    #     except TypeError:
-    #         pass
-    #     except Exception as e:
-    #         pass
 
 
 def save_rc(image, w, h, cap_dir, capnum):
@@ -1381,36 +1343,6 @@ def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
         mdest[0] = TERM
     except TypeError:
         pass
-
-
-# def delayed_copy_to_mmap_TAB(msrc, mdest, dest_address, rc_length, mmap_length):
-#     T = (ctypes.c_uint8 * (mmap_length + 11))
-#     U = (ctypes.c_uint8 * rc_length)
-#     try:
-#         dest = T.from_buffer(mdest)
-#         src = U.from_buffer(msrc)
-#         if dest_address == 0:
-#             dest_address = ctypes.addressof(dest) + 11
-#         ctypes.memmove(dest_address, ctypes.addressof(src), mmap_length)
-#         mdest[0] = TERM
-#     except TypeError:
-#         pass
-#
-#
-# def delayed_copy_to_mmap_SBS(msrc, mdest, width, height, rc_length, mmap_length):
-#     T = (ctypes.c_uint8 * (mmap_length + 11))
-#     U = (ctypes.c_uint8 * rc_length)
-#     linelen = width * 4
-#     try:
-#         dest = T.from_buffer(mdest)
-#         src = U.from_buffer(msrc)
-#         for i in xrange(0, height):
-#             offsetsrc = i * width * 4 * 2
-#             offsetdest = i * width * 4
-#             ctypes.memmove(ctypes.addressof(dest)+11 + offsetdest, ctypes.addressof(src) + offsetsrc, linelen)
-#         mdest[0] = TERM
-#     except TypeError:
-#         pass
 
 
 class XBMCDresult(object):
@@ -1783,16 +1715,18 @@ def init_hotkey():
                ['key_cap_str', ['key_cap_shift', 'key_cap_ctrl', 'key_cap_alt']]]
     hotkeys = {}
     for i, (key, mods) in enumerate(keysets, start=1):
-        tk = scriptsettings.settings[key]
-        if len(tk) > 1:
-            k = d[tk]
-        else:
-            k = ord(tk)
-        modx = 0
-        for i2, mod in enumerate(mods, start=1):
-            if scriptsettings.settings[mod] is True:
-                modx = modx | dmod[i2]
-        hotkeys[i] = (k, modx)
+        if (i < 3 and scriptsettings.settings['key_use_delay'] is True)\
+                or (i == 3 and scriptsettings.settings['key_use_cap'] is True):
+            tk = scriptsettings.settings[key]
+            if len(tk) > 1:
+                k = d[tk]
+            else:
+                k = ord(tk)
+            modx = 0
+            for i2, mod in enumerate(mods, start=1):
+                if scriptsettings.settings[mod] is True:
+                    modx = modx | dmod[i2]
+            hotkeys[i] = (k, modx)
     success = True
     for myid, (vk, mod) in hotkeys.items():
         try:
