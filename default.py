@@ -803,7 +803,7 @@ class CapturePlayer(xbmc.Player):
                   # Get other settings associated with XBMC Direct
                     use_threading = scriptsettings.settings['use_threading']
                     throttle = scriptsettings.settings['throttle']
-                    instrumented = scriptsettings.settings['instrumented']
+                    instrumented = True  # scriptsettings.settings['instrumented']
                     delay = scriptsettings.settings['delay']
                     result.width_capture = infos[0]
                     result.height_capture = infos[1]
@@ -1119,8 +1119,7 @@ class XBMCD(object):
             self.capture.waitForCaptureStateChangeEvent(self.tpf)
             cgcs = self.capture.getCaptureState()
             if cgcs == xbmc.CAPTURE_STATE_DONE:
-                self.copy_image_to_mmap(first_pass)
-                first_pass = False
+                self.copy_image_to_mmap()
                 xbmc.sleep(self.sleeptime)
                 if simul:
                     self.inDataMap[0] = chr(248)
@@ -1166,7 +1165,7 @@ class XBMCD(object):
                 cgcs = self.capture.getCaptureState()
                 if cgcs == xbmc.CAPTURE_STATE_DONE:
                     with Timer() as t2:
-                        self.copy_image_to_mmap()
+                        self.copy_image_to_mmap(counter)
                         counter += 1
                         if dqma.calc_moving_avg(float(xbmc.getInfoLabel('System.FPS'))):
                             self.result.framerate_below_threshold += 1
@@ -1264,13 +1263,13 @@ class XBMCD(object):
     def chk_hotkeys_dummy(self, counter):
         pass
 
-    def copy_image_to_mmap(self):
+    def copy_image_to_mmap(self, counter=0):
         image = self.capture.getImage()
         self.inDataMap.seek(0)
         seeked = self.inDataMap.read_byte()
         if ord(seeked) == 248:
             if self.first_pass is True:
-                info('XBMCDirect Capture successful')
+                info('XBMCDirect Capture successful @ counter=%s' % counter)
                 notification(__language__(32034))
                 self.first_pass = False
                 # width
@@ -1306,7 +1305,7 @@ class XBMCD(object):
         t.start()
 
     def ctype_copy_to_mmap(self, image):
-        T = (ctypes.c_uint8 * (self.rc_length + 11))
+        T = (ctypes.c_uint8 * (self.mmap_length + 11))
         U = (ctypes.c_uint8 * self.rc_length)
         dest = T.from_buffer(self.inDataMap)
         src = U.from_buffer(image)
@@ -1342,7 +1341,11 @@ def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
         ctypes.memmove(dest_address, ctypes.addressof(src), rc_length)
         mdest[0] = TERM
     except TypeError:
-        pass
+        info('Type Error during delayed copy to mmap')
+    except Exception as e:
+        info('Other Error during delayerd copy to mmap')
+        if hasattr(e, 'message'):
+            info(e.message)
 
 
 class XBMCDresult(object):
@@ -1737,7 +1740,7 @@ def init_hotkey():
             success = False
         finally:
             if success is True:
-                info('Monitor for XBMCDirect hotkeys started')
+                info('Monitor for XBMCDirect hotkey %s started' % myid)
             else:
                 info('Error registering XBMCDirect hotkeys')
 
@@ -1769,17 +1772,17 @@ def main():
                     t = threading.Thread(target=monitor_onoff)
                     t.start()
             xbmc.sleep(1000)
-        else:
-            # This is to get around a bug where onPlayBackStarted is not fired for external players present
-            # in releases up to Gotham 13.1
+        elif chk is True:  # This is to get around a bug where onPlayBackStarted is not fired for external players
+                           #  present in releases up to Gotham 13.1
             if count > 8:
-                if chk is True:
-                    if gplayer.isPlayingVideo() and not gplayer.onPBSfired:
-                        info('Firing missed onPlayBackStarted event')
-                        gplayer.onPlayBackStarted()
+                if gplayer.isPlayingVideo() and not gplayer.onPBSfired:
+                    info('Firing missed onPlayBackStarted event')
+                    gplayer.onPlayBackStarted()
                 count = 0
             count += 1
             xbmc.sleep(250)
+        else:
+            xbmc.sleep(500)
     killonoffmonitor = True
     kill_hotkeys()
     if gplayer is not None:

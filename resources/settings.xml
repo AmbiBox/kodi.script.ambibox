@@ -27,7 +27,7 @@
     <setting default="0" enable="eq(-5,4)" id="delay" label="32082" option="int" range="0,25,2000" type="slider" />
 
     <setting default="true" id="show_menu" label="32023" type="bool" value="true" visible="false" />
-    <setting default="false" id="use_threading" label="32078" type="bool" visible="false" />
+    <setting default="true" id="use_threading" label="32078" type="bool" visible="false" />
     <setting default="true" id="instrumented" label="32079" type="bool" visible="false" />
  </category>
  <category label="32071">
