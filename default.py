@@ -760,8 +760,8 @@ class CapturePlayer(xbmc.Player):
             xbmc.sleep(500)
             counter += 1
         if self.isPlayingAudio():
-            ambibox.set_profile(scriptsettings.settings["audio_enable"],
-                                enable=scriptsettings.settings["audio_profile"])
+            ambibox.set_profile(scriptsettings.settings["audio_profile"],
+                                enable=scriptsettings.settings["audio_enable"])
         if self.isPlayingVideo():
             self.playing_file = self.getPlayingFile()
             infos = self.get_aspect_ratio()
@@ -1342,10 +1342,13 @@ def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
         mdest[0] = TERM
     except TypeError:
         info('Type Error during delayed copy to mmap')
+    except ValueError as e:
+        if e.message == 'mmap closed or invalid':  # mmap closed during delay period
+            return
     except Exception as e:
         info('Other Error during delayerd copy to mmap')
         if hasattr(e, 'message'):
-            info(e.message)
+            info('Error: %s' % e.message)
 
 
 class XBMCDresult(object):
