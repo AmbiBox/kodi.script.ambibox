@@ -29,8 +29,8 @@ ambibox.connect()
 showmenu = __settings__.getSetting("show_menu")
 menu = ambibox.getProfiles()
 menu.append(__language__(32021))  # @[Backlight off] 
-menu.append(__language__(32022))  # @[Backlight on] 
-if (showmenu == "false"): 
+menu.append(__language__(32022))  # @[Backlight on]
+if (showmenu == "false"):
     menu.append(__language__(32023))  # @[Show menu when playing] 
 else:
     menu.append(__language__(32024))  # @[Do not show menu when playing] 
