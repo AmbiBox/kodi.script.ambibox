@@ -65,12 +65,19 @@ try:
             abx.unlock()
             __settings__.setSetting(id='manual_switch', value='on')
             notification(__language__(32069))  # @[LEDs On] 
-    if str_cmd == 'off':
+    elif str_cmd == 'off':
         if abx.connect() == 0:
             abx.lock()
             abx.turnOff()
             abx.unlock()
             __settings__.setSetting(id='manual_switch', value='off')
-            notification(__language__(32070))  # @[LEDs Off] 
+            notification(__language__(32070))  # @[LEDs Off]
+    else:
+        if abx.connect() == 0:
+            profile = str_cmd
+            abx.lock()
+            notification(__language__(32033) % profile)  # @[Set profile %s]
+            abx.setProfile(profile)
+            abx.unlock()
 except Exception, e:
     pass

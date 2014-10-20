@@ -824,11 +824,10 @@ class CapturePlayer(xbmc.Player):
                     info('XBMCDirect not started due to an error detecting whether or not profile uses XBMCDirect')
 
     def onPlayBackEnded(self):
+        ambibox.switch_to_default_profile()
         self.playing_file = ''
         if scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile) is True:
             self.kill_XBMCDirect()
-        if ambibox.connect() == 0:
-            ambibox.switch_to_default_profile()
         self.onPBSfired = False
 
     def kill_XBMCDirect(self):
@@ -1129,6 +1128,7 @@ class XBMCD(object):
             elif cgcs == xbmc.CAPTURE_STATE_FAILED:
                 info('XBMCDirect Capture stopped')
                 if self.player.isPlaying():
+                    ambibox.switch_to_default_profile()
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
                         notification(__language__(32035))  # @[XBMCDirect Fail]
                 break
@@ -1179,6 +1179,7 @@ class XBMCD(object):
                     continue
                 elif cgcs == xbmc.CAPTURE_STATE_FAILED:
                     info('XBMCDirect Capture stopped after %s frames' % counter)
+                    ambibox.switch_to_default_profile()
                     xbmc.sleep(250)
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
                         notification(__language__(32035))  # @[XBMCDirect Fail]
