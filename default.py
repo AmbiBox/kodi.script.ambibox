@@ -20,6 +20,7 @@ import os
 import sys
 import mmap
 import time
+import datetime
 import re
 from _winreg import *
 import subprocess
@@ -38,6 +39,10 @@ else:
 import xbmcgui
 import xbmcaddon
 import xbmcvfs
+try:
+    from PIL import Image as PILImage
+except:
+    from resources.lib.dummypil import DummyPILImage as PILImage
 # Modules AmbiBox
 from resources.lib.ambibox import AmbiBox
 from resources.lib.abxtimer import Timer
@@ -50,8 +55,6 @@ TERM = chr(240)
 refresh_settings = True
 killonoffmonitor = False
 __language__ = None
-from PIL import Image as PILImage
-import datetime
 
 if not simul:
     __addon__ = xbmcaddon.Addon()
@@ -1326,6 +1329,8 @@ def save_rc(image, w, h, cap_dir, capnum):
         pi_fixed.save(fn)
     except Exception as e:
         info('Error saving screen cap')
+        if hasattr(e, 'message'):
+            info('PIL Error: %s' % e.message)
     else:
         info('Capture succesful num: %s' % capnum)
         notification('XBMCDirect buffer captured to file')
