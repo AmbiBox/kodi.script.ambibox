@@ -22,8 +22,8 @@ import json
 
 def get_log_mediainfo():
     """
-    Retrieves dimensions and framerate information from XBMC.log
-    Will likely fail if XBMC in debug mode - could be remedied by increasing the number of lines read
+    Retrieves dimensions and framerate information from Kodi.log
+    Will likely fail if Kodi in debug mode - could be remedied by increasing the number of lines read
     Props: http://stackoverflow.com/questions/260273/most-efficient-way-to-search-the-last-x-lines-of-a-file-in-python
     @return: dict() object with the following keys:
                                 'pwidth' (int)
@@ -35,7 +35,7 @@ def get_log_mediainfo():
                                 'fps' (float)
     @rtype: dict()
     """
-    logfn = xbmc.translatePath(r'special://home\XBMC.log')
+    logfn = xbmc.translatePath(r'special://home\Kodi.log')
     xbmc.sleep(250)  # found originally that it wasn't written yet
     if is_xbmc_debug():
         lookbacksize = 6144
