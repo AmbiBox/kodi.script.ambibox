@@ -31,7 +31,7 @@ from xml.etree import cElementTree as ET
 from collections import namedtuple, deque
 from ctypes import wintypes
 # Modules XBMC
-simul = 'XBMC' not in sys.executable
+simul = 'Kodi' not in sys.executable
 if simul:
     import xbmcsim as xbmc
 else:
