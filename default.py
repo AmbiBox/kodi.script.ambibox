@@ -83,10 +83,10 @@ if not simul:
 def start_debugger(remote=False):
     if remote:
         if xbmcvfs.exists(
-                r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\'
+                r'C:\\Users\\Ken User\\AppData\\Roaming\\Kodi\\addons\\script.ambibox\\resources\\lib\\'
                 r'pycharm-debug.py3k\\'):
             sys.path.append(
-                r'C:\\Users\\Ken User\\AppData\\Roaming\\XBMC\\addons\\script.ambibox\\resources\\lib\\'
+                r'C:\\Users\\Ken User\\AppData\\Roaming\\Kodi\\addons\\script.ambibox\\resources\\lib\\'
                 r'pycharm-debug.py3k\\')
             import pydevd
             pydevd.settrace('192.168.1.103', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
