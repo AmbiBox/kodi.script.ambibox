@@ -22,7 +22,7 @@ import sys
 import xbmc
 import xbmcaddon
 import xbmcgui
-
+__settings__ = xbmcaddon.Addon("script.ambibox")
 
 def notification(text, *silence):
     """
@@ -33,6 +33,8 @@ def notification(text, *silence):
     scriptname = xbmcaddon.Addon().getAddonInfo('name')
     simul = 'Kodi' not in sys.executable
     if not simul:
+        if __settings__.getSetting('notification') == 'false':
+            return
         text = text.encode('utf-8')
         info(text)
         if ((scriptname == 'script.ambibox') and (xbmcaddon.Addon().getSetting('notification') ==
