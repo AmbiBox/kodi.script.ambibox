@@ -31,7 +31,7 @@ from xml.etree import cElementTree as ET
 from collections import namedtuple, deque
 from ctypes import wintypes
 # Modules XBMC
-simul = 'Kodi' not in sys.executable
+simul = 'kodi' not in sys.executable.lower()
 if simul:
     import xbmcsim as xbmc
 else:
@@ -78,6 +78,12 @@ if not simul:
     xbmc_version = 0
     led_height = 0
     led_width = 0
+else:
+    msg = '### kodi.script.ambibox - Kodi running in simulation mode. sys.executable = %s' % sys.executable
+    try:
+        xbmc.log(msg)
+    except:
+        print msg
 
 
 def start_debugger(remote=False):
