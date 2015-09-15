@@ -31,7 +31,7 @@ from xml.etree import cElementTree as ET
 from collections import namedtuple, deque
 from ctypes import wintypes
 # Modules XBMC
-simul = 'kodi' not in sys.executable.lower()
+simul = False #'kodi' not in sys.executable.lower()
 if simul:
     import xbmcsim as xbmc
 else:
@@ -1772,6 +1772,7 @@ def kill_hotkeys():
 def main():
     global ambibox, scriptsettings, gplayer, killonoffmonitor
     info('Service Started - ver %s' % __version__)
+    info('Kodi stated from:"%s"' % sys.executable.lower())
     startup()
     gplayer = None
     monitor = XbmcMonitor()
