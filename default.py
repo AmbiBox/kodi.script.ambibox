@@ -22,6 +22,7 @@ import mmap
 import time
 import datetime
 import re
+import traceback
 from _winreg import *
 import subprocess
 from operator import itemgetter
@@ -537,14 +538,35 @@ class ScriptSettings(object):
                     defpfl = str(pfl)
             del pstrl[-1]
             pstr = "".join(pstrl)
-            doc = ET.parse(__settingsdir__ + "\\settings.xml")
-            repl = ".//setting[@type='labelenum']"
-            fixg = doc.iterfind(repl)
-            for fixe in fixg:
-                fixe.set('values', pstr)
-                fixe.set('default', defpfl)
-            doc.write(__settingsdir__ + "\\settings.xml")
-            xbmc.executebuiltin('UpdateLocalAddons')
+            try:
+                with open('%s\\settings.xml' % __settingsdir__, 'r+') as f:
+                    f.read()
+            except:
+                e = sys.exc_info()[0]
+                msg='Error opening settings.xml file for rw: '
+                if hasattr(e, 'message'):
+                    msg = str(e.message)
+                msg = msg + '\n' + traceback.format_exc()
+                info(msg)
+            else:
+                info('Settings.xml successfully opened for rw')
+                try:
+                    doc = ET.parse(__settingsdir__ + "\\settings.xml")
+                    repl = ".//setting[@type='labelenum']"
+                    fixg = doc.iterfind(repl)
+                    for fixe in fixg:
+                        fixe.set('values', pstr)
+                        fixe.set('default', defpfl)
+                    doc.write(__settingsdir__ + "\\settings.xml")
+                    xbmc.executebuiltin('UpdateLocalAddons')
+                except:
+                    e = sys.exc_info()[0]
+                    msg='Error opening settings.xml file for ET.parse: '
+                    if hasattr(e, 'message'):
+                        msg = str(e.message)
+                    msg = msg + '\n' + traceback.format_exc()
+                    info(msg)
+
 
     def set_setting(self, name, value):
         global __settings__
