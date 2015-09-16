@@ -543,7 +543,7 @@ class ScriptSettings(object):
                     f.read()
             except:
                 e = sys.exc_info()[0]
-                msg='Error opening settings.xml file for rw: '
+                msg='Error opening settings.xml file(%s\\settings.xml) for rw: ' % __settingsdir__
                 if hasattr(e, 'message'):
                     msg = str(e.message)
                 msg = msg + '\n' + traceback.format_exc()
