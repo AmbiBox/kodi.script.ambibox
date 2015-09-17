@@ -17,6 +17,7 @@
 
 # Modules General
 import os
+import glob
 import sys
 import mmap
 import time
@@ -66,6 +67,7 @@ if not simul:
     __language__ = __settings__.getLocalizedString
     __settingsdir__ = xbmc.translatePath(os.path.join(__cwd__, 'resources'))
     __resource__ = xbmc.translatePath(os.path.join(__cwd__, 'resources', 'lib'))
+    __addon_datadir__ = xbmc.translatePath('special://userdata//addon_data')
     mediax = None
     screenx = 0
     screeny = 0
@@ -98,8 +100,8 @@ def start_debugger(remote=False):
             import pydevd
             pydevd.settrace('192.168.1.103', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
     else:
-        if xbmcvfs.exists(r'C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg'):
-            sys.path.append(r'C:\Program Files (x86)\JetBrains\PyCharm 3.1.3\pycharm-debug-py3k.egg')
+        if xbmcvfs.exists(r"C:\Program Files (x86)\JetBrains\PyCharm 4.5.3\debug-eggs\pycharm-debug-py3k.egg"):
+            sys.path.append(r"C:\Program Files (x86)\JetBrains\PyCharm 4.5.3\debug-eggs\pycharm-debug-py3k.egg")
             import pydevd
             pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
@@ -521,6 +523,46 @@ class ScriptSettings(object):
             if dirty is True:
                 self.refresh_settings()
 
+    def createdummyprofile_files(self, pfls):
+        pfls.append('None')
+        pfldir = os.path.join(__addon_datadir__, 'script.ambibox', 'profiles')
+        if os.path.exists(pfldir) is False:
+            try:
+                os.makedirs(pfldir)
+            except Exception as e:
+                # e = sys.exc_info()[0]
+                msg='Error creating profile directory: '
+                if hasattr(e, 'message'):
+                    msg = str(e.message)
+                msg = msg + '\n' + traceback.format_exc()
+                info(msg)
+
+        for fl in glob.glob(os.path.join(pfldir, '*')):
+            try:
+                os.remove(fl)
+            except Exception as e:
+                # e = sys.exc_info()[0]
+                msg='Error deleting old profiles: '
+                if hasattr(e, 'message'):
+                    msg = str(e.message)
+                msg = msg + '\n' + traceback.format_exc()
+                info(msg)
+        for pfl in pfls:
+            try:
+                with open(os.path.join(pfldir, pfl), 'w') as f:
+                    f.write('x')
+            except Exception as e:
+                # e = sys.exc_info()[0]
+                msg='Error creating profile files: '
+                if hasattr(e, 'message'):
+                    msg = str(e.message)
+                msg = msg + '\n' + traceback.format_exc()
+                info(msg)
+        pass
+
+
+
+
     def updateprofilesettings(self):
         # updates choices (values="..") in settings.xml with profiles present in Ambibox program
         pstrl = []
@@ -528,44 +570,46 @@ class ScriptSettings(object):
             pfls = ambibox.get_profiles()
             numpfls = len(pfls)
             info('%s profile(s) retrieved from program' % numpfls)
-            defpfl = 'None'
-            pstrl.append('None')
-            pstrl.append('|')
-            for pfl in pfls:
-                pstrl.append(str(pfl))
-                pstrl.append('|')
-                if str(pfl).lower() == 'default':
-                    defpfl = str(pfl)
-            del pstrl[-1]
-            pstr = "".join(pstrl)
-            try:
-                with open('%s\\settings.xml' % __settingsdir__, 'r+') as f:
-                    f.read()
-            except:
-                e = sys.exc_info()[0]
-                msg='Error opening settings.xml file(%s\\settings.xml) for rw: ' % __settingsdir__
-                if hasattr(e, 'message'):
-                    msg = str(e.message)
-                msg = msg + '\n' + traceback.format_exc()
-                info(msg)
-            else:
-                info('Settings.xml successfully opened for rw')
-                try:
-                    doc = ET.parse(__settingsdir__ + "\\settings.xml")
-                    repl = ".//setting[@type='labelenum']"
-                    fixg = doc.iterfind(repl)
-                    for fixe in fixg:
-                        fixe.set('values', pstr)
-                        fixe.set('default', defpfl)
-                    doc.write(__settingsdir__ + "\\settings.xml")
-                    xbmc.executebuiltin('UpdateLocalAddons')
-                except:
-                    e = sys.exc_info()[0]
-                    msg='Error opening settings.xml file for ET.parse: '
-                    if hasattr(e, 'message'):
-                        msg = str(e.message)
-                    msg = msg + '\n' + traceback.format_exc()
-                    info(msg)
+            # defpfl = 'None'
+            # pstrl.append('None')
+            # pstrl.append('|')
+            # for pfl in pfls:
+            #     pstrl.append(str(pfl))
+            #     pstrl.append('|')
+            #     if str(pfl).lower() == 'default':
+            #         defpfl = str(pfl)
+            # del pstrl[-1]
+            self.createdummyprofile_files(pfls)
+            # pstr = "".join(pstrl)
+            # info('Trying to open: %s\\settings.xml for rw' % __settingsdir__)
+            # try:
+            #     with open('%s\\settings.xml' % __settingsdir__, 'r+') as f:
+            #         f.read()
+            # except:
+            #     e = sys.exc_info()[0]
+            #     msg='Error opening settings.xml file(%s\\settings.xml) for rw: ' % __settingsdir__
+            #     if hasattr(e, 'message'):
+            #         msg = str(e.message)
+            #     msg = msg + '\n' + traceback.format_exc()
+            #     info(msg)
+            # else:
+            #     info('Settings.xml successfully opened for rw')
+            #     try:
+            #         doc = ET.parse(__settingsdir__ + "\\settings.xml")
+            #         repl = ".//setting[@type='labelenum']"
+            #         fixg = doc.iterfind(repl)
+            #         for fixe in fixg:
+            #             fixe.set('values', pstr)
+            #             fixe.set('default', defpfl)
+            #         doc.write(__settingsdir__ + "\\settings.xml")
+            #         xbmc.executebuiltin('UpdateLocalAddons')
+            #     except:
+            #         e = sys.exc_info()[0]
+            #         msg='Error opening settings.xml file for ET.parse: '
+            #         if hasattr(e, 'message'):
+            #             msg = str(e.message)
+            #         msg = msg + '\n' + traceback.format_exc()
+            #         info(msg)
 
 
     def set_setting(self, name, value):
@@ -1794,7 +1838,7 @@ def kill_hotkeys():
 def main():
     global ambibox, scriptsettings, gplayer, killonoffmonitor
     info('Service Started - ver %s' % __version__)
-    info('Kodi stated from:"%s"' % sys.executable.lower())
+    info('Kodi started from:"%s"' % sys.executable.lower())
     startup()
     gplayer = None
     monitor = XbmcMonitor()

@@ -1,6 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <settings>
   
   <category label="32001">
+    <setting id="testz" label="Test" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
     <setting default="127.0.0.1" id="host" label="32002" type="text" />
     <setting default="3636" id="port" label="32003" type="number" />
 	<setting default="true" id="notification" label="32004" type="bool" />
@@ -15,13 +17,13 @@
 
   <category label="32010">
     <setting default="true" id="default_enable" label="32011" type="bool" />
-    <setting default="Default" id="default_profile" label="32012" subsetting="true" type="labelenum" values="None|Default" visible="eq(-1,true)" />
+    <setting id="default_profile" label="32012" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="eq(-1,true)" />
     <setting default="true" id="audio_enable" label="32015" type="bool" />
-    <setting default="Default" id="audio_profile" label="32016" subsetting="true" type="labelenum" values="None|Default" visible="eq(-1,true)" />
+    <setting id="audio_profile" label="32016" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="eq(-1,true)" />
     <setting id="text" label="32019" type="lsep" />
     <setting default="2" id="video_choice" label="32025" lvalues="32026|32027|32028|32029|32090" type="enum" />
-    <setting default="Default" enable="eq(-1,0)" id="video_profile" label="32014" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-2,4)" id="XBMCD_profile" label="32084" type="labelenum" values="None|Default" />
+    <setting enable="eq(-1,0)" id="video_profile" label="32014" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-2,4)" id="XBMCD_profile" label="32084" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
     <setting default="0" enable="eq(-3,4)" id="directXBMC_quality" label="32043" lvalues="32044|32045|32046|32047" type="enum" />
     <setting default="100" enable="eq(-4,4)" id="throttle" label="32068" range="1,2.5,100" type="slider" />
     <setting default="0" enable="eq(-5,4)" id="delay" label="32082" option="int" range="0,25,2000" type="slider" />
@@ -67,12 +69,12 @@
  <category label="32053">
     <setting label="32091" type="lsep" />
     <setting label="32092" type="lsep" />
-    <setting default="Default" id="2D_43" label="32054" subsetting="true" type="labelenum" values="None|Default" visible="true" />
-    <setting default="Default" id="2D_32" label="32055" subsetting="true" type="labelenum" values="None|Default" visible="true" />
-    <setting default="Default" id="2D_169" label="32056" subsetting="true" type="labelenum" values="None|Default" visible="true" />
-    <setting default="Default" id="2D_185" label="32057" subsetting="true" type="labelenum" values="None|Default" visible="true" />
-    <setting default="Default" id="2D_22" label="32058" subsetting="true" type="labelenum" values="None|Default" visible="true" />
-    <setting default="Default" id="2D_24" label="32059" subsetting="true" type="labelenum" values="None|Default" visible="true" />
+    <setting id="2D_43" label="32054" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="true" />
+    <setting id="2D_32" label="32055" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="true" />
+    <setting id="2D_169" label="32056" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="true" />
+    <setting id="2D_185" label="32057" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="true" />
+    <setting id="2D_22" label="32058" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="true" />
+    <setting id="2D_24" label="32059" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" visible="true" />
 
  </category>
  <category label="32060">
@@ -80,18 +82,18 @@
     <setting label="32092" type="lsep" />
     <setting default="false" id="3D_enable" label="32052" type="bool" value="false" />
     <setting label="32060" type="lsep" />
-    <setting default="Default" enable="eq(-2,true)" id="3DS_43" label="32054" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-3,true)" id="3DS_32" label="32055" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-4,true)" id="3DS_169" label="32056" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-5,true)" id="3DS_185" label="32057" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-6,true)" id="3DS_22" label="32058" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-7,true)" id="3DS_24" label="32059" subsetting="true" type="labelenum" values="None|Default" />
+    <setting enable="eq(-2,true)" id="3DS_43" label="32054" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-3,true)" id="3DS_32" label="32055" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-4,true)" id="3DS_169" label="32056" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-5,true)" id="3DS_185" label="32057" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-6,true)" id="3DS_22" label="32058" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-7,true)" id="3DS_24" label="32059" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
     <setting label="32061" type="lsep" />
-    <setting default="Default" enable="eq(-9,true)" id="3DT_43" label="32054" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-10,true)" id="3DT_32" label="32055" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-11,true)" id="3DT_169" label="32056" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-12,true)" id="3DT_185" label="32057" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-13,true)" id="3DT_22" label="32058" subsetting="true" type="labelenum" values="None|Default" />
-    <setting default="Default" enable="eq(-14,true)" id="3DT_24" label="32059" subsetting="true" type="labelenum" values="None|Default" />
+    <setting enable="eq(-9,true)" id="3DT_43" label="32054" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-10,true)" id="3DT_32" label="32055" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-11,true)" id="3DT_169" label="32056" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-12,true)" id="3DT_185" label="32057" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-13,true)" id="3DT_22" label="32058" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
+    <setting enable="eq(-14,true)" id="3DT_24" label="32059" subsetting="true" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
 </category>
 </settings>

@@ -1,3 +1,7 @@
+1.0.8.0
+Eliminated sim module due to detecting kodi in sys.executable failing
+Changed way profiles are listed on settings page due to directory permissions issue. May fail for portables still.
+
 1.0.7.1
 Updated language files from Transifex
 Added PIL dependency and dummy class if PIL cannot be loaded
