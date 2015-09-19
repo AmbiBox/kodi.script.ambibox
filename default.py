@@ -1257,7 +1257,12 @@ class XBMCD(object):
                     ambibox.switch_to_default_profile()
                     xbmc.sleep(250)
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
-                        notification(__language__(32035))  # @[XBMCDirect Fail]
+                        if gplayer.isPlaying():
+                            xbmc.sleep(250)
+                            if gplayer.isPlaying():
+                                notification(__language__(32035))  # @[XBMCDirect Fail]
+                        else:
+                            info('RenderCapture exhausted buffer at end of playing')
                     break
             sumtime += t.msecs
             if counter == evalframenum:
