@@ -908,7 +908,7 @@ class CapturePlayer(xbmc.Player):
     def kill_XBMCDirect(self):
         try:
             if self.xd is not None:
-                info('Terminating XBMCDirect')
+                xbmc.log('### [AmbiBox] - Terminating XBMCDirect')
                 if self.xd.is_alive:
                     self.xd.stop()
             if self.xd is not None:
@@ -917,7 +917,7 @@ class CapturePlayer(xbmc.Player):
             if self.xd is not None:
                 self.xd = None
         except Exception as e:
-            info('Error terminating XBMCDirect')
+            xbmc.log('### [AmbiBox] - Error terminating XBMCDirect')
             if hasattr(e, 'message'):
                 info(str(e.message))
 
@@ -1849,7 +1849,14 @@ def main():
     monitor = XbmcMonitor()
     chk = 13.0 <= xbmc_version < 13.11
     count = 0
-    while not xbmc.abortRequested:
+    sleep_int = 500
+    if xbmc_version < 14.0:
+        from resources.lib.gotham2helix import gotham_abortloop as abortloop
+        if chk:
+            sleep_int = 250
+    else:
+        from resources.lib.gotham2helix import helix_abortloop as abortloop
+    while not abortloop(sleep_int, monitor):
         if gplayer is None:
             if ambibox.connect() == 0:
                 notification(__language__(32030))  # @[Connected to AmbiBox]
@@ -1858,7 +1865,7 @@ def main():
                 if scriptsettings.settings['key_use_onoff']:
                     t = threading.Thread(target=monitor_onoff)
                     t.start()
-            xbmc.sleep(1000)
+            # xbmc.sleep(1000)
         elif chk is True:  # This is to get around a bug where onPlayBackStarted is not fired for external players
                            #  present in releases up to Gotham 13.1
             if count > 8:
@@ -1867,32 +1874,38 @@ def main():
                     gplayer.onPlayBackStarted()
                 count = 0
             count += 1
-            xbmc.sleep(250)
+            # xbmc.sleep(250)
         else:
-            xbmc.sleep(500)
-    killonoffmonitor = True
-    kill_hotkeys()
-    if gplayer is not None:
-        gplayer.kill_XBMCDirect()
-        gplayer.close()
-        del gplayer
-        if ambibox is not None:
-            ambibox.close()
-            del ambibox
-    xbmc.sleep(1000)
-    main_thread = threading.current_thread()
-    for t in threading.enumerate():
-        if t is not main_thread:
-            info('Attempting to kill thread: %s' % str(t.ident))
-            try:
-                t.exit()
-            except:
-                info('Error killing thread')
-            else:
-                info('Thread killed succesfully')
-    del monitor
-    del scriptsettings
-
+            pass
+            # xbmc.sleep(500)
+    xbmc.log('### [AmbiBox] - Abort requested')
+    if ambibox is not None:
+        ambibox.close()
+        del ambibox
+    sys.exit(0)
+    # killonoffmonitor = True
+    # if scriptsettings.settings['key_use_onoff']:
+    #     kill_hotkeys()
+    # if gplayer is not None:
+    #     # gplayer.kill_XBMCDirect()
+    #     # gplayer.close()
+    #     del gplayer
+    #     if ambibox is not None:
+    #         ambibox.close()
+    #         del ambibox
+    # xbmc.sleep(1000)
+    # main_thread = threading.current_thread()
+    # for t in threading.enumerate():
+    #     if t is not main_thread:
+    #         xbmc.log('### [AmbiBox] - Attempting to kill thread: %s' % str(t.ident))
+    #         try:
+    #             t.exit()
+    #         except:
+    #             xbmc.log('### [AmbiBox] - Error killing thread')
+    #         else:
+    #             xbmc.log('### [AmbiBox] - Thread killed succesfully')
+    # del monitor
+    # del scriptsettings
 
 if __name__ == '__main__':
     # start_debugger()
