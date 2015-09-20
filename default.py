@@ -1879,33 +1879,54 @@ def main():
             pass
             # xbmc.sleep(500)
     xbmc.log('### [AmbiBox] - Abort requested')
-    if ambibox is not None:
-        ambibox.close()
-        del ambibox
+    # sys.exit(0)
+    killonoffmonitor = True
+    try:
+        if scriptsettings.settings['key_use_onoff']:
+            xbmc.log('### [AmbiBox] - Killing HK thread')
+            xbmc.sleep(25)
+            kill_hotkeys()
+        if gplayer is not None:
+            xbmc.log('### [AmbiBox] - Killing XBMCDirect')
+            xbmc.sleep(25)
+            gplayer.kill_XBMCDirect()
+            xbmc.log('### [AmbiBox] - Killing Player')
+            xbmc.sleep(25)
+            gplayer.close()
+            del gplayer
+        if ambibox is not None:
+            xbmc.log('### [AmbiBox] - Killing Ambibox connection')
+            xbmc.sleep(25)
+            ambibox.close()
+            del ambibox
+        if monitor is not None:
+            xbmc.log('### [AmbiBox] - Killing monitor')
+            xbmc.sleep(25)
+            del monitor
+        if scriptsettings is not None:
+            xbmc.log('### [AmbiBox] - Killing scriptsettings')
+            xbmc.sleep(25)
+            del scriptsettings
+            xbmc.log('### [AmbiBox] - Scriptsettings killed')
+        xbmc.sleep(50)
+        xbmc.log('### [AmbiBox] - Retrieving main thread')
+        main_thread = threading.current_thread()
+        xbmc.log('### [AmbiBox] - Enumerating threads to kill others than main')
+        for t in threading.enumerate():
+            if t is not main_thread:
+                xbmc.log('### [AmbiBox] - Attempting to kill thread: %s' % str(t.ident))
+                xbmc.sleep(25)
+                try:
+                    t.exit()
+                except:
+                    xbmc.log('### [AmbiBox] - Error killing thread')
+                else:
+                    xbmc.log('### [AmbiBox] - Thread killed succesfully')
+    except Exception as e:
+        if hasattr(e, 'message'):
+            xbmc.log('### [Ambibox] - Error during shutdown: %s' % str(e.message))
+    xbmc.log('### [AmbiBox] - Calling sys.exit(0)')
     sys.exit(0)
-    # killonoffmonitor = True
-    # if scriptsettings.settings['key_use_onoff']:
-    #     kill_hotkeys()
-    # if gplayer is not None:
-    #     # gplayer.kill_XBMCDirect()
-    #     # gplayer.close()
-    #     del gplayer
-    #     if ambibox is not None:
-    #         ambibox.close()
-    #         del ambibox
-    # xbmc.sleep(1000)
-    # main_thread = threading.current_thread()
-    # for t in threading.enumerate():
-    #     if t is not main_thread:
-    #         xbmc.log('### [AmbiBox] - Attempting to kill thread: %s' % str(t.ident))
-    #         try:
-    #             t.exit()
-    #         except:
-    #             xbmc.log('### [AmbiBox] - Error killing thread')
-    #         else:
-    #             xbmc.log('### [AmbiBox] - Thread killed succesfully')
-    # del monitor
-    # del scriptsettings
 
 if __name__ == '__main__':
     # start_debugger()
