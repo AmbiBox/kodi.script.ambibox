@@ -1911,10 +1911,10 @@ def main():
         xbmc.sleep(50)
         xbmc.log('### [AmbiBox] - Retrieving main thread')
         main_thread = threading.current_thread()
-        xbmc.log('### [AmbiBox] - Enumerating threads to kill others than main')
+        xbmc.log('### [AmbiBox] - Enumerating threads to kill others than main (%i)' % main_thread.ident)
         for t in threading.enumerate():
             if t is not main_thread:
-                xbmc.log('### [AmbiBox] - Attempting to kill thread: %s' % str(t.ident))
+                xbmc.log('### [AmbiBox] - Attempting to kill thread: %i' % t.ident)
                 xbmc.sleep(25)
                 try:
                     t.exit()
@@ -1925,13 +1925,13 @@ def main():
     except Exception as e:
         if hasattr(e, 'message'):
             xbmc.log('### [Ambibox] - Error during shutdown: %s' % str(e.message))
-    xbmc.log('### [AmbiBox] - Calling sys.exit(0)')
-    sys.exit(0)
+        else:
+            xbmc.log('### [Ambibox] - Shutdown error without message: %s' % str(e))
+    xbmc.log('### [AmbiBox] - Exited')
 
 if __name__ == '__main__':
     # start_debugger()
     if not simul:
         main()
-        info('Ambibox exiting')
     else:
         simulate()
