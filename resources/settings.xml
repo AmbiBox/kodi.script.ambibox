@@ -2,7 +2,6 @@
 <settings>
   
   <category label="32001">
-    <setting id="testz" label="Test" default="None" option="hideext" source="../../userdata/addon_data/script.ambibox/profiles" type="select" />
     <setting default="127.0.0.1" id="host" label="32002" type="text" />
     <setting default="3636" id="port" label="32003" type="number" />
 	<setting default="true" id="notification" label="32004" type="bool" />
