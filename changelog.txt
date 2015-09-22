@@ -1,3 +1,7 @@
+1.0.8.1
+Fixed hangs during shutdown
+Uses file browse hack instead of editing settings.xml to show profiles. All defaults set to None.
+
 1.0.8.0
 Eliminated sim module due to detecting kodi in sys.executable failing
 Changed way profiles are listed on settings page due to directory permissions issue. May fail for portables still.
