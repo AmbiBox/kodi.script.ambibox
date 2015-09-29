@@ -1222,6 +1222,8 @@ class XBMCD(object):
         counter = 0
         sumtime = 0
         ctime = 0
+        failing = False
+        failretry = 0
         tfactor = self.throttle / 100.0
         evalframenum = int(self.sfps * 5.0)  # After 5 sec of video
         dqma = DQMovingAverage(self.sfps, int(self.sfps * 2 + 0.5), 0.95 * self.sfps, int(self.sfps * 3 + 0.5))
@@ -1245,6 +1247,7 @@ class XBMCD(object):
                         if dqma.calc_moving_avg(float(xbmc.getInfoLabel('System.FPS'))):
                             self.result.framerate_below_threshold += 1
                     ctime += t2.microsecs
+                    failing = False
                     xbmc.sleep(self.sleeptime)
                 elif cgcs == xbmc.CAPTURE_STATE_WORKING:
                     if counter != 0:
@@ -1254,16 +1257,36 @@ class XBMCD(object):
                     continue
                 elif cgcs == xbmc.CAPTURE_STATE_FAILED:
                     info('XBMCDirect Capture stopped after %s frames' % counter)
-                    ambibox.switch_to_default_profile()
                     xbmc.sleep(250)
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
                         if gplayer.isPlaying():
                             xbmc.sleep(250)
                             if gplayer.isPlaying():
-                                notification(__language__(32035))  # @[XBMCDirect Fail]
+                                if failing is False:
+                                    failing = True
+                                    failretry = 5
+                                if failing is True:
+                                    if failretry > 0:
+                                        info('Trying to recover from XBMCDirect Failure: Try %s/5' % str(6-failretry))
+                                        failretry = failretry - 1
+                                        self.capture = None
+                                        self.capture = xbmc.RenderCapture()
+                                        xbmc.sleep(self.sleeptime)
+                                        self.capture.capture(self.rc_width, self.rc_height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+                                    else:
+                                        notification(__language__(32035))  # @[XBMCDirect Fail]
+                                        info('Recovery from XBMCDirect Failure did not succeed - Exiting XBMCDirect')
+                                        ambibox.switch_to_default_profile()
+                                        break
+                            else:
+                                info('RenderCapture exhausted buffer at end of playing')
+                                ambibox.switch_to_default_profile()
+                                break
                         else:
                             info('RenderCapture exhausted buffer at end of playing')
-                    break
+                            ambibox.switch_to_default_profile()
+                            break
+
             sumtime += t.msecs
             if counter == evalframenum:
                 dfps = self.sfps * tfactor  # calculates a desired fps based on throttle val
