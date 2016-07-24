@@ -81,13 +81,64 @@ if not simul:
     xbmc_version = 0
     led_height = 0
     led_width = 0
+    if hasattr(xbmc.RenderCapture(), 'waitForCaptureStateChangeEvent'):
+        legacyRC = True
+    else:
+        legacyRC = False
 else:
+    legacyRC = False
     msg = '### kodi.script.ambibox - Kodi running in simulation mode. sys.executable = %s' % sys.executable
     try:
         xbmc.log(msg)
     except:
         print msg
+#
+# class RenderCaptureLegacy(xbmc.RenderCapture):
+#
+#     def __init__(self):
+#         super(RenderCaptureLegacy, self).__init__()
 
+class RenderCaptureKrypton(xbmc.RenderCapture):
+
+    def __init__(self):
+        super(RenderCaptureKrypton, self).__init__()
+        self.width = 0
+        self.height = 0
+        self.timeout = 0
+        self.ximage = bytearray(b'')
+        self.blank = bytearray(b'')
+
+    def capture(self, rc_width, rc_height, _=None):
+        self.width = rc_width
+        self.height = rc_height
+
+    def waitForCaptureStateChangeEvent(self, timeout):
+        self.timeout = timeout
+
+    def getCaptureState(self):
+        return xbmcCAPTURE_STATE_DONE
+
+    def getImage(self):
+        super(RenderCaptureKrypton, self).capture(self.width, self.height)
+        image = super(RenderCaptureKrypton, self).getImage(self.timeout)
+        if image == self.blank:
+            return self.ximage
+        else:
+            self.ximage = image
+            return image
+
+if legacyRC:
+    RenderCapture = xbmc.RenderCapture
+    xbmcCAPTURE_FLAG_CONTINUOUS = xbmc.CAPTURE_FLAG_CONTINUOUS
+    xbmcCAPTURE_STATE_DONE = xbmc.CAPTURE_STATE_DONE
+    xbmcCAPTURE_STATE_WORKING = xbmc.CAPTURE_STATE_WORKING
+    xbmcCAPTURE_STATE_FAILED = xbmc.CAPTURE_STATE_FAILED
+else:
+    RenderCapture = RenderCaptureKrypton
+    xbmcCAPTURE_FLAG_CONTINUOUS = 0
+    xbmcCAPTURE_STATE_DONE = 1
+    xbmcCAPTURE_STATE_WORKING = 0
+    xbmcCAPTURE_STATE_FAILED = 0
 
 def start_debugger(remote=False):
     if remote:
@@ -100,8 +151,8 @@ def start_debugger(remote=False):
             import pydevd
             pydevd.settrace('192.168.1.103', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
     else:
-        if xbmcvfs.exists(r"C:\Program Files (x86)\JetBrains\PyCharm 4.5.3\debug-eggs\pycharm-debug-py3k.egg"):
-            sys.path.append(r"C:\Program Files (x86)\JetBrains\PyCharm 4.5.3\debug-eggs\pycharm-debug-py3k.egg")
+        if xbmcvfs.exists(r"C:\Program Files (x86)\JetBrains\PyCharm 2016.2\debug-eggs\pycharm-debug-py3k.egg"):
+            sys.path.append(r"C:\Program Files (x86)\JetBrains\PyCharm 2016.2\debug-eggs\pycharm-debug-py3k.egg")
             import pydevd
             pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
@@ -558,9 +609,6 @@ class ScriptSettings(object):
                     msg = str(e.message)
                 msg = msg + '\n' + traceback.format_exc()
                 info(msg)
-        pass
-
-
 
 
     def updateprofilesettings(self):
@@ -726,7 +774,7 @@ class CapturePlayer(xbmc.Player):
 
         # Capture Method
         if infos[3] == 0:
-            rc = xbmc.RenderCapture()
+            rc = RenderCapture()  # TODO: Krypton
             infos[3] = rc.getAspectRatio()
             if not (0.95 < infos[3] < 1.05) and infos[3] != 0:
                 info('Aspect ratio determined by XBMC.Capture = %s' % infos[3])
@@ -1093,7 +1141,7 @@ class XBMCD(object):
         self.instrumented = instrumented
         self.killswitch = False
         self.playing_file = ''
-        self.capture = xbmc.RenderCapture()
+        self.capture = RenderCapture()  # TODO: Krypton
         self.delay = float(scriptsettings.settings['delay']/1000.0)
         self.orig_delay = self.delay
         tw = self.capture.getHeight()
@@ -1184,23 +1232,23 @@ class XBMCD(object):
 
     def run_ni(self):
         missed_capture_count = -1  # always misses the first frame
-        first_pass = True
+        self.first_pass = True
         self.frame_count = 0
-        self.capture.capture(self.rc_width, self.rc_height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+        self.capture.capture(self.rc_width, self.rc_height, xbmcCAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
         while self.exit_event() is False:
             self.capture.waitForCaptureStateChangeEvent(self.tpf)
             cgcs = self.capture.getCaptureState()
-            if cgcs == xbmc.CAPTURE_STATE_DONE:
+            if cgcs == xbmcCAPTURE_STATE_DONE:
                 self.copy_image_to_mmap()
                 xbmc.sleep(self.sleeptime)
                 if simul:
                     self.inDataMap[0] = chr(248)
-            elif cgcs == xbmc.CAPTURE_STATE_WORKING:
+            elif cgcs == xbmcCAPTURE_STATE_WORKING:
                 missed_capture_count += 1
                 continue
-            elif cgcs == xbmc.CAPTURE_STATE_FAILED:
+            elif cgcs == xbmcCAPTURE_STATE_FAILED:
                 info('XBMCDirect Capture stopped')
                 if self.player.isPlaying():
                     ambibox.switch_to_default_profile()
@@ -1228,7 +1276,7 @@ class XBMCD(object):
         evalframenum = int(self.sfps * 5.0)  # After 5 sec of video
         dqma = DQMovingAverage(self.sfps, int(self.sfps * 2 + 0.5), 0.95 * self.sfps, int(self.sfps * 3 + 0.5))
         # moving average of system fps over 2 seconds checking every three seconds
-        self.capture.capture(self.rc_width, self.rc_height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+        self.capture.capture(self.rc_width, self.rc_height, xbmcCAPTURE_FLAG_CONTINUOUS)
         if self.runtype == self.TYPE_STANDARD:
             self.playing_file = self.player.getPlayingFile()
         if self.hk is True:
@@ -1240,7 +1288,7 @@ class XBMCD(object):
             with Timer() as t:
                 self.capture.waitForCaptureStateChangeEvent(self.tpf)
                 cgcs = self.capture.getCaptureState()
-                if cgcs == xbmc.CAPTURE_STATE_DONE:
+                if cgcs == xbmcCAPTURE_STATE_DONE:
                     with Timer() as t2:
                         self.copy_image_to_mmap(counter)
                         counter += 1
@@ -1249,13 +1297,13 @@ class XBMCD(object):
                     ctime += t2.microsecs
                     failing = False
                     xbmc.sleep(self.sleeptime)
-                elif cgcs == xbmc.CAPTURE_STATE_WORKING:
+                elif cgcs == xbmcCAPTURE_STATE_WORKING:
                     if counter != 0:
                         missed_capture_count += 1
                         missed_frames.append(str(counter))
                         info('Missed frame at %s' % counter)
                     continue
-                elif cgcs == xbmc.CAPTURE_STATE_FAILED:
+                elif cgcs == xbmcCAPTURE_STATE_FAILED:
                     info('XBMCDirect Capture stopped after %s frames' % counter)
                     xbmc.sleep(250)
                     if (self.runtype == XBMCD.TYPE_THREADED and self.killswitch is False) or self.runtype == XBMCD.TYPE_STANDARD:
@@ -1270,9 +1318,9 @@ class XBMCD(object):
                                         info('Trying to recover from XBMCDirect Failure: Try %s/5' % str(6-failretry))
                                         failretry = failretry - 1
                                         self.capture = None
-                                        self.capture = xbmc.RenderCapture()
+                                        self.capture = RenderCapture()  # TODO: Krypton
                                         xbmc.sleep(self.sleeptime)
-                                        self.capture.capture(self.rc_width, self.rc_height, xbmc.CAPTURE_FLAG_CONTINUOUS)
+                                        self.capture.capture(self.rc_width, self.rc_height, xbmcCAPTURE_FLAG_CONTINUOUS)
                                     else:
                                         notification(__language__(32035))  # @[XBMCDirect Fail]
                                         info('Recovery from XBMCDirect Failure did not succeed - Exiting XBMCDirect')
