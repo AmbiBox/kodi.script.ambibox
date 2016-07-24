@@ -1,3 +1,6 @@
+1.0.9.0
+Krypton compatibility
+
 1.0.8.2
 Added an attempt to reset RenderCapture and recover upon failure with 5 retries
 
