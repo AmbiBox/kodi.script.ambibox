@@ -29,7 +29,6 @@ import subprocess
 from operator import itemgetter
 import ctypes
 import threading
-from xml.etree import cElementTree as ET
 from collections import namedtuple, deque
 from ctypes import wintypes
 # Modules XBMC
@@ -711,6 +710,17 @@ class CapturePlayer(xbmc.Player):
     def get_aspect_ratio(self):
 
         infos = [0, 0, 1, 0, 0]
+        # query = '{"jsonrpc": "2.0", "method": "XBMC.GetInfoLabels", "params": {"labels": ["Player.Process(1505)"]}, "id": 1}'
+        # result = xbmc.executeJSONRPC(query)
+        # jsonr = jloads(result)
+        # try:
+        #     x = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
+        #     vw = xbmc.getInfoLabel('Player.Process(VideoWidth)')
+        #     vh = xbmc.getInfoLabel('Player.Process(VideoHeight)')
+        #     vdar = xbmc.getInfoLabel('Player.Process(VideoDar)')
+        #     vfps = xbmc.getInfoLabel('Player.Process(1505)')
+        # except RuntimeError:
+        #     pass
         self.mi_called = False
         # Get aspect ratio
         # First try Log, then MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
@@ -774,7 +784,7 @@ class CapturePlayer(xbmc.Player):
 
         # Capture Method
         if infos[3] == 0:
-            rc = RenderCapture()  # TODO: Krypton
+            rc = RenderCapture()
             infos[3] = rc.getAspectRatio()
             if not (0.95 < infos[3] < 1.05) and infos[3] != 0:
                 info('Aspect ratio determined by XBMC.Capture = %s' % infos[3])
@@ -1141,7 +1151,7 @@ class XBMCD(object):
         self.instrumented = instrumented
         self.killswitch = False
         self.playing_file = ''
-        self.capture = RenderCapture()  # TODO: Krypton
+        self.capture = RenderCapture()
         self.delay = float(scriptsettings.settings['delay']/1000.0)
         self.orig_delay = self.delay
         tw = self.capture.getHeight()
@@ -1318,7 +1328,7 @@ class XBMCD(object):
                                         info('Trying to recover from XBMCDirect Failure: Try %s/5' % str(6-failretry))
                                         failretry = failretry - 1
                                         self.capture = None
-                                        self.capture = RenderCapture()  # TODO: Krypton
+                                        self.capture = RenderCapture()
                                         xbmc.sleep(self.sleeptime)
                                         self.capture.capture(self.rc_width, self.rc_height, xbmcCAPTURE_FLAG_CONTINUOUS)
                                     else:
@@ -1470,8 +1480,12 @@ class XBMCD(object):
 def save_rc(image, w, h, cap_dir, capnum):
     try:
         pi = PILImage.frombuffer('RGBA', (w, h), image, 'raw', 'RGBA', 0, 1)
-        pis = pi.tostring()
-        pi_fixed = PILImage.fromstring('RGBA', (w, h), pis, 'raw', 'BGRA', 0, 1)
+        if legacyRC:
+            pis = pi.tostring()
+            pi_fixed = PILImage.fromstring('RGBA', (w, h), pis, 'raw', 'BGRA', 0, 1)
+        else:
+            pib = pi.tobytes()
+            pi_fixed = PILImage.frombytes('RGBA', (w, h), pib, 'raw', 'BGRA', 0, 1)
         mtime = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         fn = '%s\XBMCDirectCap%s-%s.png' % (cap_dir, capnum, mtime)
         pi_fixed.save(fn)
