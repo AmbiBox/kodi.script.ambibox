@@ -155,6 +155,7 @@ def start_debugger(remote=False):
             import pydevd
             pydevd.settrace('localhost', port=51234, stdoutToServer=True, stderrToServer=True, suspend=False)
 
+# start_debugger()
 
 def chk_mediainfo():
     # Check if user has installed mediainfo.dll to resources/lib or has installed full Mediainfo package
@@ -708,62 +709,80 @@ class CapturePlayer(xbmc.Player):
             self.onPlayBackStarted()
 
     def get_aspect_ratio(self):
+        infos = [0, 0, 1, 1.78, 30.0]
 
-        infos = [0, 0, 1, 0, 0]
-        # query = '{"jsonrpc": "2.0", "method": "XBMC.GetInfoLabels", "params": {"labels": ["Player.Process(1505)"]}, "id": 1}'
-        # result = xbmc.executeJSONRPC(query)
-        # jsonr = jloads(result)
-        # try:
-        #     x = xbmc.getInfoLabel("VideoPlayer.VideoAspect")
-        #     vw = xbmc.getInfoLabel('Player.Process(VideoWidth)')
-        #     vh = xbmc.getInfoLabel('Player.Process(VideoHeight)')
-        #     vdar = xbmc.getInfoLabel('Player.Process(VideoDar)')
-        #     vfps = xbmc.getInfoLabel('Player.Process(1505)')
-        # except RuntimeError:
-        #     pass
+        # New Kryton method
+        pps = ['videowidth', 'videoheight', '', 'videodar', 'videofps']
+        i = 0
+        fail = False
+        for pp in pps:
+            try:
+                inf = xbmc.getInfoLabel('Player.Process(%s)' % pp)
+            except RuntimeError:
+                i += 1
+                fail = True
+            else:
+                if pp in ['videowidth', 'videoheight']:
+                    try:
+                        inff = int(inf.replace(',', ''))
+                    except ValueError:
+                        fail = True
+                    else:
+                        infos[i] = inff
+                elif pp != '':
+                    try:
+                        inff = float(inf.replace(',',''))
+                    except ValueError:
+                        fail = True
+                    else:
+                        infos[i] = inff
+                i += 1
+        if not fail:
+            return infos
+
         self.mi_called = False
         # Get aspect ratio
         # First try Log, then MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
-        info("Reading log **************")
-        infox = get_log_mediainfo()
-        if infox is not None:
-            if infox['dwidth'] != 0:
-                infos[0] = infox['dwidth']
-            if infox['dheight'] != 0:
-                infos[1] = infox['dheight']
-            if infox['dar'] != 0:
-                infos[3] = infox['dar']
-            if infox['fps'] != 0:
-                infos[4] = infox['fps']
-            if infos[0] != 0 and infos[1] != 0:
-                info('Aspect ratio determined from log: %s' % infos[3])
-                debug('Log Mediainfo- %s' % str(infox))
-                return infos
+        # info("Reading log **************")
+        # infox = get_log_mediainfo()
+        # if infox is not None:
+        #     if infox['dwidth'] != 0:
+        #         infos[0] = infox['dwidth']
+        #     if infox['dheight'] != 0:
+        #         infos[1] = infox['dheight']
+        #     if infox['dar'] != 0:
+        #         infos[3] = infox['dar']
+        #     if infox['fps'] != 0:
+        #         infos[4] = infox['fps']
+        #     if infos[0] != 0 and infos[1] != 0:
+        #         info('Aspect ratio determined from log: %s' % infos[3])
+        #         debug('Log Mediainfo- %s' % str(infox))
+        #         return infos
 
         #MediaInfo Method
-        try:
-            if self.playing_file == '':
-                self.playing_file = self.getPlayingFile()
-        except:
-            info('Error retrieving video file from xbmc.player')
-        if infos[0] != 0 and infos[1] != 0 and (mediax is not None):
-            if self.playing_file[0:3] != 'pvr':  # Cannot use for LiveTV stream
-                if xbmcvfs.exists(self.playing_file):
-                    try:
-                        infos = mediax().getInfos(self.playing_file)
-                        self.mi_called = True
-                    except:
-                        infos = [0, 0, 1, 0, 0]
-                    else:
-                        if infos[3] != 0:
-                            info('Aspect ratio determined by mediainfo.dll = % s' % infos[3])
-                            return infos
-                        else:
-                            info('mediainfo.dll returned AR = 0')
-                else:
-                    infos = [0, 0, 1, 0, 0]
-            else:
-                xbmc.sleep(1000)
+        # try:
+        #     if self.playing_file == '':
+        #         self.playing_file = self.getPlayingFile()
+        # except:
+        #     info('Error retrieving video file from xbmc.player')
+        # if infos[0] != 0 and infos[1] != 0 and (mediax is not None):
+        #     if self.playing_file[0:3] != 'pvr':  # Cannot use for LiveTV stream
+        #         if xbmcvfs.exists(self.playing_file):
+        #             try:
+        #                 infos = mediax().getInfos(self.playing_file)
+        #                 self.mi_called = True
+        #             except:
+        #                 infos = [0, 0, 1, 0, 0]
+        #             else:
+        #                 if infos[3] != 0:
+        #                     info('Aspect ratio determined by mediainfo.dll = % s' % infos[3])
+        #                     return infos
+        #                 else:
+        #                     info('mediainfo.dll returned AR = 0')
+        #         else:
+        #             infos = [0, 0, 1, 0, 0]
+        #     else:
+        #         xbmc.sleep(1000)
 
         #Info Label Method
         if infos[3] == 0:

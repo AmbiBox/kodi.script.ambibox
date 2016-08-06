@@ -37,6 +37,18 @@
     <disclaimer lang="nl">Voor fouten, verzoeken of algemene vragen kan je terecht op de AmbiBox thread op het Kodi forum.</disclaimer>
     <disclaimer lang="no">For feil, ønsker, eller generelle spørsmål, besøk AmbiBox-tråden i Kodi-forumet.</disclaimer>
     <disclaimer lang="pt_BR">Para bugs, solicitações ou dúvidas em geral visite o tópico do AmbiBox no fórum Kodi.</disclaimer>
+    <news lang="en">
+    1.0.9.0
+      Krypton compatibility
+    1.0.8.2
+      Added an attempt to reset RenderCapture and recover upon failure with 5 retries
+    1.0.8.1
+      Fixed hangs during shutdown
+      Uses file browse hack instead of editing settings.xml to show profiles. All defaults set to None.
+    1.0.8.0
+      Eliminated sim module due to detecting kodi in sys.executable failing
+      Changed way profiles are listed on settings page due to directory permissions issue. May fail for portables still.
+  </news>
     <language></language>
     <platform>windx</platform>
     <license>GNU GENERAL PUBLIC LICENSE. Version 2, June 1991</license>
