@@ -109,12 +109,12 @@ class RenderCaptureKrypton(xbmc.RenderCapture):
         self.blank = bytearray(b'')
         self.image = None
         self.capturestate = xbmcCAPTURE_STATE_WORKING
+        self.firstrequest = True
 
     def create_image(self, w, h):
         if self.lastw != w or self.lasth != h:
             image = '\xFF\0\0\xFF' * (w * h)
             self.image = bytearray(image)
-            # save_rc(image, w, h, r'C:\Temp', 0)
             self.lastw = w
             self.lasth = h
 
@@ -122,12 +122,17 @@ class RenderCaptureKrypton(xbmc.RenderCapture):
         self.width = rc_width
         self.height = rc_height
         self.create_image(rc_width, rc_height)
+        self.firstrequest = True
 
     def waitForCaptureStateChangeEvent(self, timeout):
         super(RenderCaptureKrypton, self).capture(self.width, self.height)
         image = super(RenderCaptureKrypton, self).getImage(timeout)
         if image == self.blank:
-            self.capturestate = xbmcCAPTURE_STATE_WORKING
+            if self.firstrequest:
+                self.capturestate = xbmcCAPTURE_STATE_DONE
+                self.firstrequest = False
+            else:
+                self.capturestate = xbmcCAPTURE_STATE_WORKING
         else:
             self.image = image
             self.capturestate = xbmcCAPTURE_STATE_DONE
