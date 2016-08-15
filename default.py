@@ -103,28 +103,40 @@ class RenderCaptureKrypton(xbmc.RenderCapture):
         super(RenderCaptureKrypton, self).__init__()
         self.width = 0
         self.height = 0
+        self.lastw = -1
+        self.lasth = -1
         self.timeout = 0
-        self.ximage = bytearray(b'')
         self.blank = bytearray(b'')
+        self.image = None
+        self.capturestate = xbmcCAPTURE_STATE_WORKING
+
+    def create_image(self, w, h):
+        if self.lastw != w or self.lasth != h:
+            image = '\xFF\0\0\xFF' * (w * h)
+            self.image = bytearray(image)
+            # save_rc(image, w, h, r'C:\Temp', 0)
+            self.lastw = w
+            self.lasth = h
 
     def capture(self, rc_width, rc_height, _=None):
         self.width = rc_width
         self.height = rc_height
+        self.create_image(rc_width, rc_height)
 
     def waitForCaptureStateChangeEvent(self, timeout):
-        self.timeout = timeout
+        super(RenderCaptureKrypton, self).capture(self.width, self.height)
+        image = super(RenderCaptureKrypton, self).getImage(timeout)
+        if image == self.blank:
+            self.capturestate = xbmcCAPTURE_STATE_WORKING
+        else:
+            self.image = image
+            self.capturestate = xbmcCAPTURE_STATE_DONE
 
     def getCaptureState(self):
-        return xbmcCAPTURE_STATE_DONE
+        return self.capturestate
 
     def getImage(self):
-        super(RenderCaptureKrypton, self).capture(self.width, self.height)
-        image = super(RenderCaptureKrypton, self).getImage(self.timeout)
-        if image == self.blank:
-            return self.ximage
-        else:
-            self.ximage = image
-            return image
+        return self.image
 
 if legacyRC:
     RenderCapture = xbmc.RenderCapture
@@ -744,21 +756,22 @@ class CapturePlayer(xbmc.Player):
         self.mi_called = False
         # Get aspect ratio
         # First try Log, then MediaInfo, then infoLabels, then Capture. Default to screen dimensions.
-        info("Reading log **************")
-        infox = get_log_mediainfo()
-        if infox is not None:
-            if infox['dwidth'] != 0:
-                infos[0] = infox['dwidth']
-            if infox['dheight'] != 0:
-                infos[1] = infox['dheight']
-            if infox['dar'] != 0:
-                infos[3] = infox['dar']
-            if infox['fps'] != 0:
-                infos[4] = infox['fps']
-            if infos[0] != 0 and infos[1] != 0:
-                info('Aspect ratio determined from log: %s' % infos[3])
-                debug('Log Mediainfo- %s' % str(infox))
-                return infos
+        if legacyRC:
+            info("Reading log **************")
+            infox = get_log_mediainfo()
+            if infox is not None:
+                if infox['dwidth'] != 0:
+                    infos[0] = infox['dwidth']
+                if infox['dheight'] != 0:
+                    infos[1] = infox['dheight']
+                if infox['dar'] != 0:
+                    infos[3] = infox['dar']
+                if infox['fps'] != 0:
+                    infos[4] = infox['fps']
+                if infos[0] != 0 and infos[1] != 0:
+                    info('Aspect ratio determined from log: %s' % infos[3])
+                    debug('Log Mediainfo- %s' % str(infox))
+                    return infos
 
         # MediaInfo Method
         try:
@@ -982,6 +995,30 @@ class CapturePlayer(xbmc.Player):
         if scriptsettings.profiles.is_xbmc_direct(ambibox.current_profile) is True:
             self.kill_XBMCDirect()
         self.onPBSfired = False
+
+    # def testinfolabels(self):
+    #     if self.isPlayingAudio():
+    #         tests = [['MusicPlayer.Contributers',''], ['MusicPlayer.Property', 'Role.Composer']]
+    #     else:
+    #         tests = [['Player.Process','VideoDecoder']]
+    #     output = []
+    #     for test in tests:
+    #         if test[1] == '':
+    #             for t in [test[0], test[0].lower()]:
+    #                 try:
+    #                     result = xbmc.getInfoLabel(t)
+    #                 except:
+    #                     result = 'exception'
+    #                 output.append([t, result])
+    #         else:
+    #             for t in [test[0], test[0].lower()]:
+    #                 for p in [test[1], test[1].lower()]:
+    #                     try:
+    #                         result = xbmc.getInfoLabel('%s(%s)' % (t, p))
+    #                     except:
+    #                         result = 'exception'
+    #                     output.append(['%s(%s)' % (t,p), result])
+    #     print output
 
     def kill_XBMCDirect(self):
         try:
