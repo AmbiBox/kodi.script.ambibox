@@ -126,7 +126,7 @@ class RenderCaptureKrypton(xbmc.RenderCapture):
 
     def waitForCaptureStateChangeEvent(self, timeout):
         super(RenderCaptureKrypton, self).capture(self.width, self.height)
-        image = super(RenderCaptureKrypton, self).getImage(timeout)
+        image = super(RenderCaptureKrypton, self).getImage(2 * timeout)
         if image == self.blank:
             if self.firstrequest:
                 self.capturestate = xbmcCAPTURE_STATE_DONE
