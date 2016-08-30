@@ -901,13 +901,15 @@ class CapturePlayer(xbmc.Player):
         if minq < 8:
             minq = 8
         if quality == 0:
+            infos[1] = 32
+            infos[0] = 32
+            # infos[1] = 3 * minq
+            # infos[0] = int(infos[1] * infos[3])
+        elif quality == 1:
             infos[1] = 3 * minq
             infos[0] = int(infos[1] * infos[3])
-        elif quality == 1:
-            infos[1] = 6 * minq
-            infos[0] = int(infos[1] * infos[3])
         elif quality == 2:
-            infos[1] = 9 * minq
+            infos[1] = 6 * minq
             infos[0] = int(infos[1] * infos[3])
         else:
             if infos[3] > sar:
@@ -1529,14 +1531,17 @@ class XBMCD(object):
         t.start()
 
     def ctype_copy_to_mmap(self, image):
-        T = (ctypes.c_uint8 * (self.mmap_length + 11))
-        U = (ctypes.c_uint8 * self.rc_length)
-        dest = T.from_buffer(self.inDataMap)
-        src = U.from_buffer(image)
-        if self.mmap_address == 0:
-            self.mmap_address = ctypes.addressof(dest) + 11
-        ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.rc_length)
-        self.inDataMap[0] = TERM
+        try:
+            T = (ctypes.c_uint8 * (self.mmap_length + 11))
+            U = (ctypes.c_uint8 * self.rc_length)
+            dest = T.from_buffer(self.inDataMap)
+            src = U.from_buffer(image)
+            if self.mmap_address == 0:
+                self.mmap_address = ctypes.addressof(dest) + 11
+            ctypes.memmove(self.mmap_address, ctypes.addressof(src), self.rc_length)
+            self.inDataMap[0] = TERM
+        except Exception as e:
+            info('Ctype copy error: %s' % str(e))
 
 
 def save_rc(image, w, h, cap_dir, capnum):
@@ -1576,7 +1581,7 @@ def delayed_copy_to_mmap(msrc, mdest, dest_address, rc_length, mmap_length):
         if e.message == 'mmap closed or invalid':  # mmap closed during delay period
             return
     except Exception as e:
-        info('Other Error during delayerd copy to mmap')
+        info('Other Error during delayed copy to mmap')
         if hasattr(e, 'message'):
             info('Error: %s' % e.message)
 
